@@ -1,6 +1,6 @@
 import twilio from "twilio";
 import { writeFileSync } from "fs";
-import { Stages } from "@/lib/utils";
+import { isCompletedSignup, leadRow, LEAD_HEADER } from "@/lib/cafe/leads";
 import type { AttendeeRecord } from "@/types";
 
 const {
@@ -8,7 +8,6 @@ const {
   TWILIO_API_SECRET = "",
   TWILIO_ACCOUNT_SID = "",
   TWILIO_SYNC_SERVICE_SID = "",
-  SEGMENT_TRAIT_CHECK = "",
 } = process.env;
 
 const client = twilio(TWILIO_API_KEY, TWILIO_API_SECRET, {
@@ -36,13 +35,7 @@ if (!eventName || eventName.startsWith("/") || eventName.includes("=")) {
     const attendees = attendeePage.instances
       // @ts-ignore  thinks is a object but actually it's a user
       .map((item) => item.data as AttendeeRecord)
-      .filter(
-        (a) =>
-          (a.stage === Stages.VERIFIED_USER ||
-            a.stage === Stages.FIRST_ORDER ||
-            a.stage === Stages.REPEAT_CUSTOMER) &&
-          a.event === eventName,
-      );
+      .filter((a) => isCompletedSignup(a) && a.event === eventName);
 
     verifiedAttendees = verifiedAttendees.concat(attendees);
 
@@ -50,31 +43,11 @@ if (!eventName || eventName.startsWith("/") || eventName.includes("=")) {
     attendeePage = await attendeePage.nextPage();
   }
 
-  function escapeCsv(value: unknown): string {
-    const str = value == null ? "" : String(value);
-    return str.includes(",") || str.includes('"') || str.includes("\n")
-      ? `"${str.replace(/"/g, '""')}"` : str;
-  }
-
   try {
-    const traitHeader = SEGMENT_TRAIT_CHECK || "SegmentTrait";
-    const csv = verifiedAttendees.map((attendee) => {
-      const traitValue = SEGMENT_TRAIT_CHECK ? attendee[SEGMENT_TRAIT_CHECK] : undefined;
-      return [
-        attendee.fullName,
-        attendee.email,
-        attendee.country,
-        attendee.company,
-        attendee.jobTitle,
-        attendee.foundInSegment,
-        traitValue,
-        attendee.event,
-        attendee.stage,
-      ].map(escapeCsv).join(",");
-    });
+    const csv = verifiedAttendees.map(leadRow);
     writeFileSync(
       `attendees-${eventName}.csv`,
-      `FullName,Email,Country,Company,JobTitle,FoundInSegment,${traitHeader},Event,Stage\n${csv.join("\n")}`,
+      `${LEAD_HEADER.join(",")}\n${csv.join("\n")}`,
     );
     console.log(`Exported ${csv.length} attendees to attendees-${eventName}.csv`);
   } catch (e) {
