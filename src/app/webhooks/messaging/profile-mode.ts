@@ -17,7 +17,7 @@ import {
   regexFor6ConsecutiveDigits,
 } from "@/lib/utils";
 import { checkSegmentTraits } from "./segment";
-import { getReadyToOrderMessage } from "@/scripts/fetchContentTemplates";
+import { startCafe } from "@/lib/cafe/start";
 import {
   eventLang,
   getDataPolicy,
@@ -43,34 +43,10 @@ function sanitizeFullName(fullName: string) {
 async function sendReadyToOrder(
   sender: string,
   event: Event,
-  isReturning: boolean,
+  _isReturning: boolean,
   from: string,
 ) {
-  const message = await getReadyToOrderMessage(
-    event,
-    event.selection.items,
-    event.maxOrders,
-    isReturning,
-    eventLang(event),
-  );
-  sendMessage(
-    sender,
-    "",
-    message.contentSid,
-    message.contentVariables,
-    from,
-  );
-  if (event.selection.modifiers.length > 1) {
-    await sleep(1500);
-    sendMessage(
-      sender,
-      getModifiersMessage(event.selection.modifiers, eventLang(event)),
-      undefined,
-      undefined,
-      from,
-    );
-  }
-  await sleep(2000);
+  // Privacy note first, then the quiz.
   sendMessage(
     sender,
     getDataPolicy(event.selection.mode, eventLang(event)),
@@ -78,6 +54,7 @@ async function sendReadyToOrder(
     undefined,
     from,
   );
+  await startCafe(sender, event, from);
 }
 
 export async function handleProfileMode(
@@ -107,7 +84,12 @@ export async function handleProfileMode(
   if (
     stage === Stages.VERIFIED_USER ||
     stage === Stages.FIRST_ORDER ||
-    stage === Stages.REPEAT_CUSTOMER
+    stage === Stages.REPEAT_CUSTOMER ||
+    stage === Stages.QUIZ ||
+    stage === Stages.QUIZ_FAILED ||
+    stage === Stages.PICK_COFFEE ||
+    stage === Stages.PICK_SAVOURY ||
+    stage === Stages.AWAITING_PAYMENT
   ) {
     return false;
   }
@@ -233,6 +215,7 @@ export async function handleProfileMode(
         phone,
         {
           stage: Stages.VERIFIED_USER,
+          completedSignup: true,
           ...(SEGMENT_TRAIT_CHECK
             ? { [SEGMENT_TRAIT_CHECK]: (segmentData as any)[SEGMENT_TRAIT_CHECK] }
             : {}),

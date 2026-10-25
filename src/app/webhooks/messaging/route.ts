@@ -33,12 +33,14 @@ import {
   getWelcomeMessage,
   isForgetMeRequest,
 } from "@/lib/stringTemplates";
-import type { Event } from "@/types";
+import type { AttendeeRecord, Event } from "@/types";
 import { isReorderCta } from "@/lib/cta";
 import { handleQrMode, createQrModeMemoryClient } from "./qr-mode";
 import { handleProfileMode } from "./profile-mode";
 import { deleteMemoryProfile } from "./memory";
-import { runAiAgent } from "./ai-agent";
+import { handleCafeMessage } from "@/lib/cafe/flow";
+import { realDeps } from "@/lib/cafe/deps";
+import { isUnlimited, startCafe } from "@/lib/cafe/start";
 
 const NEXT_PUBLIC_EVENTS_MAP = process.env.NEXT_PUBLIC_EVENTS_MAP || "",
   NEXT_PUBLIC_ATTENDEES_MAP =
@@ -57,19 +59,9 @@ async function getActiveEvents() {
 }
 
 /** Send the "ready to order" sequence: menu + data policy + optional modifiers note. */
+/** Start the cafe flow (quiz, then menu) for this attendee. */
 async function sendReadyToOrderSequence(sender: string, event: Event, from: string) {
-  const message = await getReadyToOrderMessage(
-    event,
-    event.selection.items,
-    event.maxOrders,
-    true,
-    eventLang(event),
-  );
-  sendMessage(sender, "", message.contentSid, message.contentVariables, from);
-  if (event.selection.modifiers.length > 1) {
-    await sleep(500);
-    sendMessage(sender, getModifiersMessage(event.selection.modifiers, eventLang(event)), undefined, undefined, from);
-  }
+  await startCafe(sender, event, from);
 }
 
 /**
@@ -355,10 +347,16 @@ export async function POST(request: Request) {
     return new Response(emptyTwiml(), { status: 200, headers: { "Content-Type": "text/xml" } });
   }
 
-  const reply = await runAiAgent(incomingMessageBody, event, phone, sender, from);
-  if (reply) {
-    sendMessage(sender, reply, undefined, undefined, from);
-  }
+  await handleCafeMessage(
+    {
+      message: incomingMessageBody,
+      event,
+      phone,
+      record: attendeeRecord as AttendeeRecord,
+      unlimited: isUnlimited(phone),
+    },
+    realDeps(event, sender, from),
+  );
 
   return new Response(emptyTwiml(), { status: 200, headers: { "Content-Type": "text/xml" } });
 }
