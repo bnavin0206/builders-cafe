@@ -12,6 +12,11 @@ export enum Stages {
   NAME_CONFIRMED = "NAME_CONFIRMED",
   VERIFYING = "VERIFYING",
   VERIFIED_USER = "VERIFIED_USER",
+  QUIZ = "QUIZ",
+  QUIZ_FAILED = "QUIZ_FAILED",
+  PICK_COFFEE = "PICK_COFFEE",
+  PICK_SAVOURY = "PICK_SAVOURY",
+  AWAITING_PAYMENT = "AWAITING_PAYMENT",
   FIRST_ORDER = "FIRST_ORDER",
   REPEAT_CUSTOMER = "REPEAT_CUSTOMER",
 }
@@ -26,11 +31,17 @@ export enum modes {
 
 export type Language = "en" | "pt-BR" | "fr";
 
+export type MenuCategory = "coffee" | "savoury";
+
 export interface MenuItem {
   shortTitle: string;
   title: string;
   description: string;
   originalTitle?: string;
+  // Price in INR (whole rupees). 0 means free. Unset is treated as free so
+  // menus from the original app keep working.
+  price?: number;
+  category?: MenuCategory;
 }
 
 export type Menus = {
