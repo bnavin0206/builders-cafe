@@ -30,6 +30,8 @@ export const msg = {
     `Order #${n} confirmed: ${summary}. We'll message you when it's ready.`,
   paymentReceived: (n: number, summary: string) =>
     `Payment received. Order #${n} confirmed: ${summary}. We'll message you when it's ready.`,
+  paymentOrphan: (paymentId: string) =>
+    `We received your payment (${paymentId}) but could not match it to an order. Please show this message to the barista and we will sort it out.`,
   paymentError:
     "Sorry, we could not create your payment link. Please try again in a moment.",
 };

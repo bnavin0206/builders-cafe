@@ -48,6 +48,8 @@ export interface CafeDeps {
   createPaymentLink(
     req: PaymentLinkRequest,
   ): Promise<{ id: string; url: string }>;
+  /** Best effort: stops an unpaid link from being paid after we gave up on it. */
+  cancelPaymentLink(linkId: string): Promise<void>;
 }
 
 export interface CafeInput {
@@ -366,6 +368,7 @@ export async function placeOrder(
     dailyOrderCount: dailyCount + 1,
     dailyOrderDate: day,
     ...(isFree(order.coffee) ? { freeUsedDate: day } : {}),
+    ...(order.paymentId ? { lastPaymentId: order.paymentId } : {}),
     pendingOrder: undefined,
     cartCoffee: undefined,
   });
@@ -377,6 +380,7 @@ async function awaitingPayment(input: CafeInput, deps: CafeDeps) {
   const pending = record.pendingOrder;
   const expired = !pending || new Date(pending.expiresAt) <= deps.now();
   if (/^cancel$/i.test(message.trim()) || expired) {
+    if (pending) await deps.cancelPaymentLink(pending.linkId);
     await deps.save(phone, { stage: Stages.VERIFIED_USER, pendingOrder: undefined });
     deps.send(expired ? msg.payExpired : msg.payCancelled);
     return;

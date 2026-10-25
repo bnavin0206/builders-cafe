@@ -149,5 +149,6 @@ export interface AttendeeRecord {
   freeUsedDate?: string;
   cartCoffee?: string;
   pendingOrder?: PendingOrder;
+  lastPaymentId?: string;
   [traitKey: string]: unknown;
 }

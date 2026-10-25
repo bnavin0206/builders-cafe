@@ -47,6 +47,7 @@ class Sim {
   sent: string[] = [];
   orders: Order[] = [];
   links: PaymentLinkRequest[] = [];
+  cancelled: string[] = [];
   failLink = false;
   clock = new Date("2026-11-12T10:00:00Z");
   evt: Event;
@@ -80,6 +81,9 @@ class Sim {
       if (this.failLink) throw new Error("razorpay down");
       this.links.push(req);
       return { id: `plink_${this.links.length}`, url: `https://rzp.io/i/test${this.links.length}` };
+    },
+    cancelPaymentLink: async (id) => {
+      this.cancelled.push(id);
     },
   };
 
@@ -329,6 +333,7 @@ describe("paid orders", () => {
     expect(s.record.stage).toBe(Stages.VERIFIED_USER);
     expect(s.record.pendingOrder).toBeUndefined();
     expect(s.last).toContain("cancelled");
+    expect(s.cancelled).toEqual(["plink_1"]);
   });
 
   test("an expired link is cleared on the next message", async () => {
@@ -340,6 +345,7 @@ describe("paid orders", () => {
     await s.say("hello?");
     expect(s.record.stage).toBe(Stages.VERIFIED_USER);
     expect(s.last).toContain("expired");
+    expect(s.cancelled).toEqual(["plink_1"]);
   });
 
   test("placeOrder after payment queues a paid order with the payment id", async () => {

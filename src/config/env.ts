@@ -38,4 +38,9 @@ export const env = {
   segmentSpaceId: process.env.SEGMENT_SPACE_ID ?? "",
   segmentProfileKey: process.env.SEGMENT_PROFILE_KEY ?? "",
   segmentTraitCheck: process.env.SEGMENT_TRAIT_CHECK ?? "",
+
+  // Razorpay (test keys first, live keys at go-live)
+  razorpayKeyId: process.env.RAZORPAY_KEY_ID ?? "",
+  razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET ?? "",
+  razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET ?? "",
 } as const;
