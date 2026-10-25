@@ -62,6 +62,10 @@ export interface Order {
   status: "queued" | "cancelled" | "ready" | "delivered";
   reminded?: true;
   channel?: "rcs" | "whatsapp" | "sms" | "api" | "other";
+  // Set for orders that went through the cafe flow. A free order has
+  // amountPaise 0 and no paymentId.
+  amountPaise?: number;
+  paymentId?: string;
 }
 
 export interface Selection {
@@ -104,6 +108,15 @@ export interface SegmentData {
   [trait: string]: unknown;
 }
 
+export interface PendingOrder {
+  coffee: string;
+  savoury?: string;
+  amountPaise: number;
+  linkId: string;
+  linkUrl: string;
+  expiresAt: string; // ISO time
+}
+
 export interface AttendeeRecord {
   from?: string;
   event?: string;
@@ -121,5 +134,20 @@ export interface AttendeeRecord {
   jobTitle?: string;
   country?: string;
   foundInSegment?: boolean;
+  completedSignup?: boolean;
+  // Quiz progress. Dates are YYYY-MM-DD in the event's day (UTC for now).
+  quizQuestions?: string[];
+  quizSeen?: string[];
+  quizIndex?: number;
+  quizCorrect?: number;
+  quizAttempts?: number;
+  quizAttemptDate?: string;
+  quizPassedDate?: string;
+  quizResult?: "passed" | "failed";
+  // "free" shows every item, "paid" shows only items with a price above 0.
+  menuMode?: "free" | "paid";
+  freeUsedDate?: string;
+  cartCoffee?: string;
+  pendingOrder?: PendingOrder;
   [traitKey: string]: unknown;
 }
