@@ -3,6 +3,7 @@ import { cafeRules } from "@/config/cafe-rules";
 import { quizBank } from "@/config/quiz-bank";
 import {
   begin,
+  enter,
   handleCafeMessage,
   placeOrder,
   type CafeDeps,
@@ -92,6 +93,11 @@ class Sim {
 
   async start() {
     await begin(this.input(""), this.deps, this.rules);
+  }
+
+  /** Sign-up just finished, or the QR code was scanned again. */
+  async scan() {
+    await enter(this.input(""), this.deps, this.rules);
   }
 
   async say(message: string) {
@@ -518,5 +524,91 @@ describe("limits", () => {
     expect(s.last).toContain("already taken part");
     expect(s.orders).toHaveLength(0);
     expect(s.links).toHaveLength(0);
+  });
+});
+
+describe("after sign-up or a re-scan", () => {
+  test("someone new starts the quiz", async () => {
+    const s = new Sim();
+    await s.scan();
+    expect(s.record.stage).toBe(Stages.QUIZ);
+    expect(s.last).toContain("Question 1 of 3");
+  });
+
+  test("someone who failed the quiz goes to the paid menu, not back to the quiz", async () => {
+    const s = new Sim();
+    await s.failQuiz();
+    s.record.stage = Stages.VERIFIED_USER;
+    await s.scan();
+    expect(s.record.stage).toBe(Stages.PICK_COFFEE);
+    expect(s.sent.at(-1)).toContain("already taken part in the quiz");
+    expect(s.last).toContain("1. Cold Brew (₹120)");
+    expect(s.last).not.toContain("Americano");
+    expect(s.record.quizAttempts).toBe(1);
+  });
+
+  test("someone who already ordered goes to the paid menu", async () => {
+    const s = new Sim();
+    await s.passQuiz();
+    await s.say("1");
+    await s.say("0");
+    await s.say("0");
+    await s.scan();
+    expect(s.last).toContain("already taken part in the quiz");
+    expect(s.last).toContain("Cold Brew");
+    expect(s.last).not.toContain("Americano");
+  });
+
+  test("a winner who has not taken the free coffee also goes to the paid menu", async () => {
+    const s = new Sim();
+    await s.passQuiz();
+    s.record.stage = Stages.VERIFIED_USER;
+    await s.scan();
+    expect(s.last).toContain("Cold Brew");
+    expect(s.last).not.toContain("Americano");
+    // They can still ask for the menu to get the free coffee they won.
+    await s.say("menu");
+    expect(s.last).toContain("Americano (FREE)");
+  });
+
+  test("that rule can be switched off", async () => {
+    const s = new Sim();
+    s.rules = { ...cafeRules, rescanAfterQuizGoesToPaid: false };
+    await s.passQuiz();
+    s.record.stage = Stages.VERIFIED_USER;
+    await s.scan();
+    expect(s.last).toContain("Americano (FREE)");
+  });
+
+  test("a re-scan in the middle of the quiz repeats the question without penalty", async () => {
+    const s = new Sim();
+    await s.start();
+    await s.answer(true);
+    const index = s.record.quizIndex;
+    await s.scan();
+    expect(s.record.stage).toBe(Stages.QUIZ);
+    expect(s.record.quizResult).toBeUndefined();
+    expect(s.record.quizIndex).toBe(index);
+    expect(s.last).toContain("Question 2 of 3");
+  });
+
+  test("a re-scan while waiting for payment repeats the link", async () => {
+    const s = new Sim();
+    await s.failQuiz();
+    await s.say("1");
+    await s.say("0");
+    await s.say("0");
+    await s.scan();
+    expect(s.record.stage).toBe(Stages.AWAITING_PAYMENT);
+    expect(s.last).toContain("https://rzp.io/i/test1");
+    expect(s.links).toHaveLength(1);
+  });
+
+  test("a blocked attendee stays blocked", async () => {
+    const s = new Sim();
+    s.record.stage = Stages.BLOCKED;
+    await s.scan();
+    expect(s.last).toContain("already taken part");
+    expect(s.record.stage).toBe(Stages.BLOCKED);
   });
 });

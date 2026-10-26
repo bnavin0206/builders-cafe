@@ -11,7 +11,10 @@ replying with a number or an item name.
    success `completedSignup` is saved.
 3. Segment check: an attendee whose email is already found in Segment is
    blocked (stage `BLOCKED`) and goes no further.
-4. Quiz: 3 random questions from the bank in `src/config/quiz-bank.ts`
+4. Quiz: anyone who has already taken part in the quiz (for example by
+   scanning the QR code again) skips it and goes to the paid menu. Anyone in
+   the middle of a step just gets the current prompt again. Everyone else
+   gets 3 random questions from the bank in `src/config/quiz-bank.ts`
    (20 placeholders). One attempt.
 5. All correct: free coffee, then add-ons (sugar and others, from the event's
    modifier list), then one optional paid item (drink or snack).
@@ -40,6 +43,7 @@ updated brief, to confirm at the meeting) or DEFAULT (developer choice):
 | Free coffees per attendee | 1 for the whole event; paid orders unlimited | CLIENT |
 | Extra paid items after the coffee | at most 1 | DEFAULT |
 | Block if found in Segment | yes | CLIENT (confirm what "found" means) |
+| Already took the quiz, after sign-up or re-scan | go to the paid menu | CLIENT (confirm for winners who have not taken the free coffee; they can reply MENU) |
 | Unpaid link expiry | 2 minutes | CLIENT |
 
 Placeholders to replace: the 20 quiz questions, the add-on list and all

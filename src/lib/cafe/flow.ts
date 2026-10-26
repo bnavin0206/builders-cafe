@@ -113,6 +113,40 @@ export async function handleCafeMessage(
 }
 
 /**
+ * Entry after sign-up or when the attendee scans the QR code again.
+ * - Blocked attendees stay blocked.
+ * - In the middle of a step (quiz, menu, add-ons, payment) the current prompt
+ *   is sent again, with no penalty.
+ * - Someone who has already taken part in the quiz goes to the paid menu.
+ * - Everyone else starts the quiz.
+ */
+export async function enter(
+  input: CafeInput,
+  deps: CafeDeps,
+  rules: CafeRules = cafeRules,
+  bank: QuizQuestion[] = quizBank,
+): Promise<void> {
+  const { record } = input;
+  if (record.stage === Stages.BLOCKED) {
+    deps.send(msg.blocked);
+    return;
+  }
+  if (
+    record.stage === Stages.QUIZ ||
+    isPicking(record.stage) ||
+    record.stage === Stages.AWAITING_PAYMENT
+  ) {
+    return handleCafeMessage({ ...input, message: "" }, deps, rules, bank);
+  }
+  const takenQuiz =
+    record.quizResult !== undefined || (record.quizAttempts ?? 0) > 0;
+  if (takenQuiz && rules.rescanAfterQuizGoesToPaid) {
+    return showCoffeeMenu(input, deps, "paid", msg.alreadyTookQuiz);
+  }
+  return begin(input, deps, rules, bank);
+}
+
+/**
  * Start a visit. Winners with the free coffee still unused see the free
  * coffees. Everyone else sees the paid menu. Anyone who has not taken the quiz
  * takes it first.

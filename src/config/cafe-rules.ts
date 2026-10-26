@@ -19,6 +19,11 @@ export const cafeRules = {
   freeCoffeesPerEvent: 1,
   // DEFAULT: after the coffee and add-ons, at most one extra paid item.
   maxExtraItems: 1,
+  // CLIENT: after sign-up or a re-scan of the QR code, anyone who has already
+  // taken part in the quiz goes straight to the paid menu. To CONFIRM: this
+  // includes a winner who has not yet taken the free coffee (for example the
+  // payment link expired); such a winner can still reply MENU to get it back.
+  rescanAfterQuizGoesToPaid: true,
   // CLIENT: "on rescan FoundInSegment needed to block them". An attendee whose
   // verified email is already found in Segment cannot take part. To CONFIRM
   // with the client: does "found" mean "has taken part before" (then we must

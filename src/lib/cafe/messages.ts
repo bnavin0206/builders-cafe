@@ -11,6 +11,8 @@ export const msg = {
     "Sorry, that was not enough for a free coffee. You can still order from our paid menu. Reply with a number.",
   quizFailedEnd:
     "Sorry, that was not enough for a free coffee. Thanks for playing!",
+  alreadyTookQuiz:
+    "You have already taken part in the quiz, so you can order from our paid menu. Reply with a number.",
   freeUsed:
     "You have already had your free coffee. You can still order from our paid menu. Reply with a number.",
   blocked:

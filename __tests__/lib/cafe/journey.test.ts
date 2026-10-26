@@ -320,6 +320,20 @@ describe("full attendee journey through the webhooks", () => {
     expect(p.record.stage).toBe("AWAITING_PAYMENT");
   });
 
+  test("scanning the QR code again after the quiz goes to the paid menu", async () => {
+    const p = new Phone("+919800000011");
+    await p.signUp();
+    await p.passQuiz();
+    await p.say("1");
+    await p.say("0");
+    await p.say("0"); // free Americano ordered
+    await p.say("Send this message to order a coffee at Builder's Cafe ☕️");
+    expect(p.last).toContain("already taken part in the quiz");
+    expect(p.last).toContain("1. Cold Brew (₹120)");
+    expect(p.last).not.toContain("Americano");
+    expect(p.record.stage).toBe("PICK_COFFEE");
+  });
+
   test("a closed event stops orders", async () => {
     const p = new Phone("+919800000009");
     await p.signUp();
