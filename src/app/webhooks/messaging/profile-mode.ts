@@ -19,6 +19,7 @@ import {
 import { checkSegmentTraits } from "./segment";
 import { startCafe } from "@/lib/cafe/start";
 import { cafeRules } from "@/config/cafe-rules";
+import { buildLead, sendLead } from "@/lib/cafe/leads-sink";
 import { msg } from "@/lib/cafe/messages";
 import {
   eventLang,
@@ -233,9 +234,20 @@ export async function handleProfileMode(
 
       if (blocked) {
         sendMessage(sender, msg.blocked, undefined, undefined, from);
-        return true;
+      } else {
+        await sendReadyToOrder(sender, event, false, from);
       }
-      await sendReadyToOrder(sender, event, false, from);
+      // Send the verified lead to the client's database. Never blocks the flow.
+      await sendLead(
+        buildLead(
+          {
+            ...attendeeRecord,
+            stage: blocked ? Stages.BLOCKED : Stages.VERIFIED_USER,
+            foundInSegment: segmentData.foundInSegment,
+          },
+          event,
+        ),
+      );
       return true;
     } catch (error) {
       console.error(error);

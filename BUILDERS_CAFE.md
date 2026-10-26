@@ -80,3 +80,21 @@ agreed.
 confirmation, the webhook signature check, the lead export and a full
 journey through both webhook routes with in-memory Twilio. The five
 `checkConfig` tests need live Twilio credentials and fail without them.
+
+## Before production
+
+Open items that must be settled and checked before go-live:
+
+- [ ] **Client database for leads (decision pending).** The code is ready but
+  switched off. Each verified sign-up is posted as signed JSON to
+  `LEADS_WEBHOOK_URL` (secret in `LEADS_WEBHOOK_SECRET`, signature in the
+  `X-Signature` header, `Idempotency-Key` header, no phone number). Needs the
+  client's endpoint that writes to their database and upserts by email plus
+  event. Until it is set, leads exist only in Twilio Sync (kept 6 weeks) and
+  in `pnpm download <event>`.
+- [ ] Confirm the DEFAULT and CLIENT rules in `src/config/cafe-rules.ts`.
+- [ ] What "found in Segment" means (see the client document).
+- [ ] Display board for ready order numbers (not built).
+- [ ] Replace the placeholders: 20 quiz questions, add-ons, prices, menu.
+- [ ] Switch Razorpay and the WhatsApp sender from test to live.
+- [ ] Rotate every key and password that was used during testing.
