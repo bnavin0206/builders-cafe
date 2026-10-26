@@ -113,6 +113,15 @@ export async function handleCafeMessage(
 }
 
 /**
+ * The mobile number check. Attendee records are keyed by phone number (the
+ * same number gives the same record on WhatsApp and SMS), so a record with a
+ * quiz result or a quiz attempt means this number has already taken part.
+ */
+export function hasTakenPart(record: Partial<AttendeeRecord>): boolean {
+  return record.quizResult != null || (record.quizAttempts ?? 0) > 0;
+}
+
+/**
  * Entry after sign-up or when the attendee scans the QR code again.
  * - Blocked attendees stay blocked.
  * - In the middle of a step (quiz, menu, add-ons, payment) the current prompt
@@ -138,9 +147,7 @@ export async function enter(
   ) {
     return handleCafeMessage({ ...input, message: "" }, deps, rules, bank);
   }
-  const takenQuiz =
-    record.quizResult !== undefined || (record.quizAttempts ?? 0) > 0;
-  if (takenQuiz && rules.rescanAfterQuizGoesToPaid) {
+  if (hasTakenPart(record) && rules.rescanAfterQuizGoesToPaid) {
     return showCoffeeMenu(input, deps, "paid", msg.alreadyTookQuiz);
   }
   return begin(input, deps, rules, bank);

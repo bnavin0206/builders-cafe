@@ -4,6 +4,7 @@ import { quizBank } from "@/config/quiz-bank";
 import {
   begin,
   enter,
+  hasTakenPart,
   handleCafeMessage,
   placeOrder,
   type CafeDeps,
@@ -610,5 +611,22 @@ describe("after sign-up or a re-scan", () => {
     await s.scan();
     expect(s.last).toContain("already taken part");
     expect(s.record.stage).toBe(Stages.BLOCKED);
+  });
+});
+
+describe("mobile number check", () => {
+  test("a number with no quiz history has not taken part", () => {
+    expect(hasTakenPart({})).toBe(false);
+    expect(hasTakenPart({ stage: Stages.VERIFIED_USER, fullName: "Asha" })).toBe(false);
+  });
+
+  test("a quiz result or an attempt means the number has taken part", () => {
+    expect(hasTakenPart({ quizResult: "passed" })).toBe(true);
+    expect(hasTakenPart({ quizResult: "failed" })).toBe(true);
+    expect(hasTakenPart({ quizAttempts: 1 })).toBe(true);
+  });
+
+  test("a cleared (null) result does not count", () => {
+    expect(hasTakenPart({ quizResult: null as any, quizAttempts: 0 })).toBe(false);
   });
 });

@@ -45,6 +45,7 @@ updated brief, to confirm at the meeting) or DEFAULT (developer choice):
 | Extra paid items after the coffee | at most 1 | DEFAULT |
 | Email verification code | off, just ask for email, company and city | CLIENT |
 | Block if found in Segment | yes | CLIENT (confirm what "found" means; the email is not verified, so a different address gets past it) |
+| Mobile number check | records are keyed by the phone number, the same on WhatsApp and SMS; a number with a quiz result or attempt has taken part | CLIENT |
 | Already took the quiz, after sign-up or re-scan | go to the paid menu | CLIENT (confirm for winners who have not taken the free coffee; they can reply MENU) |
 | Unpaid link expiry | 2 minutes | CLIENT |
 
@@ -99,6 +100,10 @@ Open items that must be settled and checked before go-live:
   client's endpoint that writes to their database and upserts by email plus
   event. Until it is set, leads exist only in Twilio Sync (kept 6 weeks) and
   in `pnpm download <event>`.
+- [ ] **"Forget me" lets a person retake the quiz.** It deletes the record,
+  so the number is treated as new. Closing this needs a stored marker for the
+  number (a salted hash) that survives deletion, which needs a privacy
+  decision from the client.
 - [ ] Confirm the DEFAULT and CLIENT rules in `src/config/cafe-rules.ts`.
 - [ ] What "found in Segment" means (see the client document).
 - [ ] Display board for ready order numbers (not built).

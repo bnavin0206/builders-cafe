@@ -348,6 +348,44 @@ describe("full attendee journey through the webhooks", () => {
     expect(p.record.stage).toBe("PICK_COFFEE");
   });
 
+  test("the same mobile number is recognised on SMS as well as WhatsApp", async () => {
+    const p = new Phone("+919800000012");
+    await p.signUp();
+    for (let i = 0; i < 3; i++) {
+      const id = p.record.quizQuestions[p.record.quizIndex];
+      const q = quizBank.find((x) => x.id === id)!;
+      await p.say(String(((q.correct + 1) % 3) + 1)); // fails the quiz
+    }
+    expect(p.record.quizResult).toBe("failed");
+    // Same number, now texting from SMS instead of WhatsApp.
+    const res = await messaging(
+      new Request("http://localhost/webhooks/messaging", {
+        method: "POST",
+        body: new URLSearchParams({ From: "+919800000012", To: "+14155238886", Body: "menu" }),
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+      }),
+    );
+    expect(res.status).toBeLessThan(300);
+    expect(attendees().size).toBe(1);
+    const reply = world.sent.filter((m) => m.to === "+919800000012").at(-1)!.body;
+    expect(reply).toContain("Cold Brew");
+    expect(reply).not.toContain("Americano");
+  });
+
+  test("a different mobile number starts the quiz as a new attendee", async () => {
+    const a = new Phone("+919800000013");
+    await a.signUp();
+    await a.passQuiz();
+    await a.say("1");
+    await a.say("0");
+    await a.say("0"); // A took the free coffee
+    const b = new Phone("+919800000014");
+    await b.signUp("Ravi Kumar", "ravi@example.com");
+    expect(b.record.stage).toBe("QUIZ");
+    expect(b.record.freeCoffeesTaken).toBeUndefined();
+    expect(b.inbox.some((m) => m.includes("Question 1 of 3"))).toBe(true);
+  });
+
   test("a closed event stops orders", async () => {
     const p = new Phone("+919800000009");
     await p.signUp();
