@@ -10,6 +10,8 @@ export enum EventState {
 export enum Stages {
   NEW_USER = "NEW_USER",
   NAME_CONFIRMED = "NAME_CONFIRMED",
+  ASK_COMPANY = "ASK_COMPANY",
+  ASK_CITY = "ASK_CITY",
   VERIFYING = "VERIFYING",
   VERIFIED_USER = "VERIFIED_USER",
   BLOCKED = "BLOCKED",
@@ -137,6 +139,7 @@ export interface AttendeeRecord {
   checkSid?: string;
   company?: string;
   jobTitle?: string;
+  city?: string;
   country?: string;
   foundInSegment?: boolean;
   completedSignup?: boolean;

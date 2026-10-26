@@ -7,8 +7,9 @@ replying with a number or an item name.
 ## Journey
 
 1. QR code opens WhatsApp; welcome message.
-2. Name, email, emailed code (existing `LEAD_COLLECTION=MANUAL` flow). On
-   success `completedSignup` is saved.
+2. Sign-up in the chat: name, email, company, city. There is no emailed
+   code (`verifyEmail: false` in `cafe-rules.ts`; set it to true to bring the
+   code back). When the city arrives `completedSignup` is saved.
 3. Segment check: an attendee whose email is already found in Segment is
    blocked (stage `BLOCKED`) and goes no further.
 4. Quiz: anyone who has already taken part in the quiz (for example by
@@ -42,7 +43,8 @@ updated brief, to confirm at the meeting) or DEFAULT (developer choice):
 | After a failed quiz | can buy priced items | CLIENT |
 | Free coffees per attendee | 1 for the whole event; paid orders unlimited | CLIENT |
 | Extra paid items after the coffee | at most 1 | DEFAULT |
-| Block if found in Segment | yes | CLIENT (confirm what "found" means) |
+| Email verification code | off, just ask for email, company and city | CLIENT |
+| Block if found in Segment | yes | CLIENT (confirm what "found" means; the email is not verified, so a different address gets past it) |
 | Already took the quiz, after sign-up or re-scan | go to the paid menu | CLIENT (confirm for winners who have not taken the free coffee; they can reply MENU) |
 | Unpaid link expiry | 2 minutes | CLIENT |
 
@@ -58,7 +60,8 @@ result and the free coffee are remembered for the whole event.
 ## Setup
 
 1. `cp .env.example .env.local` and fill in the Twilio values, as in the
-   Mixologist README. `OPENAI_API_KEY` is not needed.
+   Mixologist README. Twilio Verify and SendGrid are not needed while
+   `verifyEmail` is false. `OPENAI_API_KEY` is not needed.
 2. Add `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` (test keys first).
 3. In the Razorpay dashboard add a webhook to
    `<PUBLIC_BASE_URL>/webhooks/razorpay` for the `payment_link.paid` event and

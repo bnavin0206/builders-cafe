@@ -138,11 +138,12 @@ class Phone {
     );
     expect(res.status).toBeLessThan(300);
   }
-  async signUp(name = "Asha Rao", email = "asha@example.com") {
+  async signUp(name = "Asha Rao", email = "asha@example.com", company = "Acme Ltd", city = "Chennai") {
     await this.say("Hi");
     await this.say(name);
     await this.say(email);
-    await this.say("123456");
+    await this.say(company);
+    await this.say(city);
   }
   async passQuiz() {
     for (let i = 0; i < 3; i++) {
@@ -187,6 +188,8 @@ describe("full attendee journey through the webhooks", () => {
     expect(p.record).toMatchObject({
       fullName: "Asha Rao",
       email: "asha@example.com",
+      company: "Acme Ltd",
+      city: "Chennai",
       event: "builders-cafe",
       completedSignup: true,
       foundInSegment: false,
@@ -196,14 +199,25 @@ describe("full attendee journey through the webhooks", () => {
     expect(p.inbox.some((m) => m.includes("Question 1 of 3"))).toBe(true);
   });
 
-  test("a wrong code does not complete sign-up or start the quiz", async () => {
+  test("no email code is sent: the chat asks for email, company, then city", async () => {
     const p = new Phone("+919800000002");
     await p.say("Hi");
     await p.say("Asha");
+    expect(p.last).toBe("Thanks! What is your email address?");
+    await p.say("not an email");
+    expect(p.record.stage).toBe("NAME_CONFIRMED");
+    expect(p.last).toContain("does not look like an email");
     await p.say("asha@example.com");
-    await p.say("000000");
-    expect(p.record.stage).toBe("VERIFYING");
+    expect(p.record.stage).toBe("ASK_COMPANY");
+    expect(p.last).toBe("Which company are you with?");
     expect(p.record.completedSignup).toBeUndefined();
+    await p.say("   ");
+    expect(p.record.stage).toBe("ASK_COMPANY");
+    await p.say("Acme   Ltd");
+    expect(p.record.company).toBe("Acme Ltd");
+    expect(p.last).toBe("Which city are you in?");
+    await p.say("Chennai");
+    expect(p.record).toMatchObject({ city: "Chennai", completedSignup: true, stage: "QUIZ" });
   });
 
   test("someone found in Segment is blocked and never reaches the quiz", async () => {

@@ -36,7 +36,7 @@ export const LEAD_HEADER = [
   "Stage",
   "QuizResult",
   "Company",
-  "JobTitle",
+  "City",
 ];
 
 export function leadRow(a: Partial<AttendeeRecord>): string {
@@ -50,7 +50,7 @@ export function leadRow(a: Partial<AttendeeRecord>): string {
     a.stage,
     a.quizResult,
     a.company,
-    a.jobTitle,
+    a.city,
   ]
     .map(escapeCsv)
     .join(",");

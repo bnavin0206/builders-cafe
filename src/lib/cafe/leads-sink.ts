@@ -13,6 +13,8 @@ export interface LeadPayload {
   fullName?: string;
   email?: string;
   country?: string;
+  company?: string;
+  city?: string;
   foundInSegment: boolean;
   completedSignup: boolean;
   event?: string;
@@ -31,6 +33,8 @@ export function buildLead(
     fullName: record.fullName,
     email: record.email,
     country: record.country,
+    company: record.company,
+    city: record.city,
     foundInSegment: record.foundInSegment === true,
     completedSignup: true,
     event: event.slug,

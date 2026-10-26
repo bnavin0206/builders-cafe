@@ -19,6 +19,10 @@ export const cafeRules = {
   freeCoffeesPerEvent: 1,
   // DEFAULT: after the coffee and add-ons, at most one extra paid item.
   maxExtraItems: 1,
+  // CLIENT: no email verification code. We just ask for name, email, company
+  // and city in the chat. Set to true to bring back the emailed code (needs
+  // the Twilio Verify and SendGrid setup).
+  verifyEmail: false,
   // CLIENT: after sign-up or a re-scan of the QR code, anyone who has already
   // taken part in the quiz goes straight to the paid menu. To CONFIRM: this
   // includes a winner who has not yet taken the free coffee (for example the

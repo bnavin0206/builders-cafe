@@ -35,8 +35,10 @@ describe("leads export", () => {
         event: "builders-cafe",
         stage: Stages.FIRST_ORDER,
         quizResult: "passed",
+        company: "Acme Ltd",
+        city: "Chennai",
       }),
-    ).toBe("Asha Rao,asha@example.com,India,false,true,builders-cafe,FIRST_ORDER,passed,,");
+    ).toBe("Asha Rao,asha@example.com,India,false,true,builders-cafe,FIRST_ORDER,passed,Acme Ltd,Chennai");
   });
 
   test("escapes commas, quotes and newlines", () => {
