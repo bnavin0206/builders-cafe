@@ -8,34 +8,48 @@ replying with a number or an item name.
 
 1. QR code opens WhatsApp; welcome message.
 2. Name, email, emailed code (existing `LEAD_COLLECTION=MANUAL` flow). On
-   success `completedSignup` is saved and the quiz starts.
-3. Quiz: 3 random questions from the bank in `src/config/quiz-bank.ts`.
-4. Coffee menu, then optional savoury, with prices from `src/config/menus.ts`.
-5. Total is added up on the server. Total 0: order is queued at once.
-   Total above 0: a Razorpay payment link is sent in the chat. The order is
-   queued only after the verified `payment_link.paid` webhook.
-6. Barista Order Dashboard (unchanged): Finish sends the ready message.
+   success `completedSignup` is saved.
+3. Segment check: an attendee whose email is already found in Segment is
+   blocked (stage `BLOCKED`) and goes no further.
+4. Quiz: 3 random questions from the bank in `src/config/quiz-bank.ts`
+   (20 placeholders). One attempt.
+5. All correct: free coffee, then add-ons (sugar and others, from the event's
+   modifier list), then one optional paid item (drink or snack).
+   Any answer wrong: paid menu only (priced drink, add-ons, optional priced
+   snack). A failed quiz stays failed for the whole event.
+6. Total is added up on the server. Total 0: order is queued at once.
+   Total above 0: a Razorpay payment link (valid 2 minutes) is sent in the
+   chat. The order is queued only after the verified `payment_link.paid`
+   webhook. There is no cancel option.
+7. Barista Order Dashboard: Finish marks the order ready.
 
 Code: `src/lib/cafe/` (flow, quiz, pricing, payment, messages),
 `src/app/webhooks/razorpay/route.ts`, `src/lib/razorpay.ts`.
 
-## DEFAULT RULES (to confirm with the client)
+## Rules
 
-All in `src/config/cafe-rules.ts`. These are developer defaults, not client
-decisions:
+All in `src/config/cafe-rules.ts`, each marked CLIENT (from the client's
+updated brief, to confirm at the meeting) or DEFAULT (developer choice):
 
-| Rule | Default |
-| --- | --- |
-| Questions per attendee | 3 |
-| Pass mark | all 3 correct |
-| Attempts | 2 (one retry with new questions) |
-| After the last failed attempt | can still buy items with a price above 0 |
-| Free items per attendee per day | 1 |
-| Savoury | optional, one coffee plus at most one savoury |
-| Unpaid link expiry | 10 minutes |
+| Rule | Value | Source |
+| --- | --- | --- |
+| Questions per attendee | 3 | DEFAULT |
+| Pass mark | all 3 correct | CLIENT |
+| Attempts | 1, no retry; failed stays failed for the event | CLIENT (confirm if it ever resets) |
+| After a failed quiz | can buy priced items | CLIENT |
+| Free coffees per attendee | 1 for the whole event; paid orders unlimited | CLIENT |
+| Extra paid items after the coffee | at most 1 | DEFAULT |
+| Block if found in Segment | yes | CLIENT (confirm what "found" means) |
+| Unpaid link expiry | 2 minutes | CLIENT |
 
-Also placeholders to replace: the 15 quiz questions, the savoury items and
-all prices in `menus.ts`.
+Placeholders to replace: the 20 quiz questions, the add-on list and all
+prices in `menus.ts`.
+
+Open: the display board for ready order numbers is not built yet. The
+WhatsApp ready message still comes from the dashboard's Finish button.
+
+Attendee records are kept for 6 weeks (`EventLengthInSeconds`) so the quiz
+result and the free coffee are remembered for the whole event.
 
 ## Setup
 
@@ -56,8 +70,9 @@ Mixologist scripts. Check it exists and is approved for the sender in use.
 
 `pnpm download <event-slug>` writes `attendees-<event-slug>.csv` with
 FullName, Email, Country, FoundInSegment, CompletedSignup, Event, Stage,
-QuizResult. Attendee records expire from Twilio Sync after 2 weeks, so export
-weekly during a 5-week event.
+QuizResult. Attendee records expire from Twilio Sync after 6 weeks. The
+client wants leads in their own database: the way to send them is still to be
+agreed.
 
 ## Tests
 

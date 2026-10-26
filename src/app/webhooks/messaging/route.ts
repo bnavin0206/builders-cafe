@@ -15,7 +15,7 @@ import {
   getCountryFromPhone,
   EventState,
   sleep,
-  TwoWeeksInSeconds,
+  EventLengthInSeconds,
 } from "@/lib/utils";
 
 import { getEvent } from "../mixologist-helper";
@@ -40,7 +40,7 @@ import { handleProfileMode } from "./profile-mode";
 import { deleteMemoryProfile } from "./memory";
 import { handleCafeMessage } from "@/lib/cafe/flow";
 import { realDeps } from "@/lib/cafe/deps";
-import { isUnlimited, startCafe } from "@/lib/cafe/start";
+import { startCafe } from "@/lib/cafe/start";
 
 const NEXT_PUBLIC_EVENTS_MAP = process.env.NEXT_PUBLIC_EVENTS_MAP || "",
   NEXT_PUBLIC_ATTENDEES_MAP =
@@ -104,7 +104,7 @@ async function selectEventForCustomer(
           stage: Stages.NEW_USER,
           country: country?.name === "Canada" ? "United States" : country?.name,
         },
-        TwoWeeksInSeconds,
+        EventLengthInSeconds,
       );
       if (attendeeRecord) attendeeRecord.event = newEvent.slug;
       return null;
@@ -125,7 +125,7 @@ async function selectEventForCustomer(
         stage: isReturning ? Stages.VERIFIED_USER : Stages.NEW_USER,
         ...(isReturning ? {} : { country: country?.name === "Canada" ? "United States" : country?.name }),
       },
-      TwoWeeksInSeconds,
+      EventLengthInSeconds,
     );
 
     if (isReturning || newEvent.leadCollection === "NONE") {
@@ -174,7 +174,7 @@ async function selectEventForCustomer(
         stage: isReturning ? Stages.VERIFIED_USER : Stages.NEW_USER,
         ...(isReturning ? {} : { country: country?.name === "Canada" ? "United States" : country?.name }),
       },
-      TwoWeeksInSeconds,
+      EventLengthInSeconds,
     );
 
     await sleep(500);
@@ -233,7 +233,7 @@ export async function POST(request: Request) {
   // different one auto-selected by the Messaging Service.
   const from = receivedOn || ((attendeeRecord as any).from as string | undefined) || "";
   if (receivedOn && receivedOn !== (attendeeRecord as any).from) {
-    await updateOrCreateSyncMapItem(NEXT_PUBLIC_ATTENDEES_MAP, phone, { from: receivedOn }, TwoWeeksInSeconds);
+    await updateOrCreateSyncMapItem(NEXT_PUBLIC_ATTENDEES_MAP, phone, { from: receivedOn }, EventLengthInSeconds);
     (attendeeRecord as any).from = receivedOn;
   }
 
@@ -353,7 +353,6 @@ export async function POST(request: Request) {
       event,
       phone,
       record: attendeeRecord as AttendeeRecord,
-      unlimited: isUnlimited(phone),
     },
     realDeps(event, sender, from),
   );

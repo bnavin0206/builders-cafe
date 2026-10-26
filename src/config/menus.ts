@@ -47,20 +47,21 @@ export default {
       {
         shortTitle: "Veg Puff",
         title: "Veg Puff",
-        description: "Savoury add-on, free (placeholder)",
+        description: "Snack, paid (placeholder price)",
         category: "savoury",
-        price: 0, // PLACEHOLDER
+        price: 60, // PLACEHOLDER
       },
       {
         shortTitle: "Cheese Croissant",
         title: "Cheese Croissant",
-        description: "Savoury add-on, paid (placeholder price)",
+        description: "Snack, paid (placeholder price)",
         category: "savoury",
         price: 90, // PLACEHOLDER
       },
     ],
-    // Not used by the cafe flow: orders are chosen from the fixed menu.
-    modifiers: [],
+    // Add-ons offered with the coffee. PLACEHOLDER list: the client confirms
+    // the final sugar levels and other add-ons.
+    modifiers: ["No sugar", "Less sugar", "Extra sugar", "Extra hot"],
   },
   smoothie: {
     items: [

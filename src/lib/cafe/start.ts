@@ -7,11 +7,8 @@ export async function startCafe(sender: string, event: Event, from: string) {
   const phone = sender.replace(/^(whatsapp:|rcs:|sms:)/, "");
   const record = await loadRecord(phone);
   await begin(
-    { message: "", event, phone, record, unlimited: isUnlimited(phone) },
+    { message: "", event, phone, record },
     realDeps(event, sender, from),
   );
 }
 
-export function isUnlimited(phone: string): boolean {
-  return (process.env.UNLIMITED_ORDERS || "").split(",").includes(phone);
-}

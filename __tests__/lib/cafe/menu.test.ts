@@ -25,6 +25,11 @@ describe("Builder's Cafe menu", () => {
     expect(coffee.some((i) => !isFree(i))).toBe(true);
   });
 
+  test("offers add-ons and a paid snack for the paid options", () => {
+    expect((menus.barista.modifiers ?? []).length).toBeGreaterThan(0);
+    expect(itemsIn(items, "savoury").some((i) => !isFree(i))).toBe(true);
+  });
+
   test("a failed quiz still has something to buy", () => {
     expect(itemsIn(items, "coffee").filter((i) => !isFree(i)).length).toBeGreaterThan(0);
   });
@@ -34,8 +39,9 @@ describe("default rules are marked as defaults", () => {
   test("the rule values the client brief asks about", () => {
     expect(cafeRules.quizQuestionCount).toBe(3);
     expect(cafeRules.passMark).toBe(3);
-    expect(cafeRules.maxQuizAttempts).toBe(2);
-    expect(cafeRules.freeItemsPerDay).toBe(1);
-    expect(cafeRules.paymentExpiryMinutes).toBe(10);
+    expect(cafeRules.maxQuizAttempts).toBe(1);
+    expect(cafeRules.freeCoffeesPerEvent).toBe(1);
+    expect(cafeRules.paymentExpiryMinutes).toBe(2);
+    expect(cafeRules.blockIfFoundInSegment).toBe(true);
   });
 });

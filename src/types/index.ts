@@ -12,10 +12,12 @@ export enum Stages {
   NAME_CONFIRMED = "NAME_CONFIRMED",
   VERIFYING = "VERIFYING",
   VERIFIED_USER = "VERIFIED_USER",
+  BLOCKED = "BLOCKED",
   QUIZ = "QUIZ",
   QUIZ_FAILED = "QUIZ_FAILED",
   PICK_COFFEE = "PICK_COFFEE",
-  PICK_SAVOURY = "PICK_SAVOURY",
+  PICK_ADDONS = "PICK_ADDONS",
+  PICK_EXTRA = "PICK_EXTRA",
   AWAITING_PAYMENT = "AWAITING_PAYMENT",
   FIRST_ORDER = "FIRST_ORDER",
   REPEAT_CUSTOMER = "REPEAT_CUSTOMER",
@@ -62,6 +64,8 @@ export interface Order {
   status: "queued" | "cancelled" | "ready" | "delivered";
   reminded?: true;
   channel?: "rcs" | "whatsapp" | "sms" | "api" | "other";
+  // Extra paid item chosen after the coffee (shown on the dashboard).
+  extras?: string;
   // Set for orders that went through the cafe flow. A free order has
   // amountPaise 0 and no paymentId.
   amountPaise?: number;
@@ -110,7 +114,8 @@ export interface SegmentData {
 
 export interface PendingOrder {
   coffee: string;
-  savoury?: string;
+  addOns?: string[];
+  extra?: string;
   amountPaise: number;
   linkId: string;
   linkUrl: string;
@@ -135,19 +140,19 @@ export interface AttendeeRecord {
   country?: string;
   foundInSegment?: boolean;
   completedSignup?: boolean;
-  // Quiz progress. Dates are YYYY-MM-DD in the event's day (UTC for now).
+  // Quiz progress. The result and the free coffee count last for the whole event.
   quizQuestions?: string[];
   quizSeen?: string[];
   quizIndex?: number;
   quizCorrect?: number;
   quizAttempts?: number;
-  quizAttemptDate?: string;
-  quizPassedDate?: string;
   quizResult?: "passed" | "failed";
   // "free" shows every item, "paid" shows only items with a price above 0.
   menuMode?: "free" | "paid";
-  freeUsedDate?: string;
+  // Free coffees taken so far, for the whole event.
+  freeCoffeesTaken?: number;
   cartCoffee?: string;
+  cartAddOns?: string[];
   pendingOrder?: PendingOrder;
   lastPaymentId?: string;
   [traitKey: string]: unknown;

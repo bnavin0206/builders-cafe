@@ -1,27 +1,31 @@
 // Builder's Cafe rules.
 //
-// DEFAULTS: every value below is a default chosen by the developer, NOT a
-// client decision. They are to be confirmed or changed after the client
-// meeting (see the client brief, "Questions for you"). Change them here only.
+// Each value is marked CLIENT (taken from the client's updated brief, still to
+// be confirmed at the meeting) or DEFAULT (a developer choice, not decided).
+// Change values here only.
 export const cafeRules = {
   // DEFAULT: 3 random questions per attendee.
   quizQuestionCount: 3,
-  // DEFAULT: all 3 answers must be correct to open the free-coffee path.
+  // CLIENT: all 3 answers must be correct.
   passMark: 3,
-  // DEFAULT: one retry with new questions (2 attempts in total).
-  maxQuizAttempts: 2,
-  // DEFAULT: after the last failed attempt the attendee can still order, but
-  // only items with a price above 0, at the listed price.
+  // CLIENT: one attempt, no retry. A wrong answer leaves only paid options.
+  maxQuizAttempts: 1,
+  // CLIENT: after a wrong answer the attendee can still buy priced items.
   failedQuizCanBuyPaidItems: true,
-  // DEFAULT: one free (price 0) item per attendee per day.
-  freeItemsPerDay: 1,
-  // DEFAULT: the savoury is optional.
-  savouryOptional: true,
-  // DEFAULT: an order is one coffee plus at most one savoury.
-  maxCoffeePerOrder: 1,
-  maxSavouryPerOrder: 1,
-  // DEFAULT: an unpaid Razorpay link expires after 10 minutes.
-  paymentExpiryMinutes: 10,
+  // CLIENT: "only paid option for future attempts too", so a failed quiz stays
+  // failed for the whole event. To CONFIRM: does it ever reset?
+  // CLIENT: one free coffee per attendee for the whole event; paid orders have
+  // no limit. Enforced through the free coffee being used once.
+  freeCoffeesPerEvent: 1,
+  // DEFAULT: after the coffee and add-ons, at most one extra paid item.
+  maxExtraItems: 1,
+  // CLIENT: "on rescan FoundInSegment needed to block them". An attendee whose
+  // verified email is already found in Segment cannot take part. To CONFIRM
+  // with the client: does "found" mean "has taken part before" (then we must
+  // also write each participant to Segment) or "is an existing contact"?
+  blockIfFoundInSegment: true,
+  // CLIENT: an unpaid payment link expires after 2 minutes.
+  paymentExpiryMinutes: 2,
 } as const;
 
 export type CafeRules = typeof cafeRules;

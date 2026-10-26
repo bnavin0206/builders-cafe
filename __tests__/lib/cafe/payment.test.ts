@@ -88,11 +88,12 @@ describe("confirmPayment", () => {
     );
   });
 
-  test("includes the savoury in the order", async () => {
+  test("includes the add-ons and extra item in the order", async () => {
     const { state, io } = setup({
       pendingOrder: {
         coffee: "Cold Brew",
-        savoury: "Cheese Croissant",
+        addOns: ["Less sugar"],
+        extra: "Cheese Croissant",
         amountPaise: 21000,
         linkId: "plink_1",
         linkUrl: "u",
@@ -100,7 +101,7 @@ describe("confirmPayment", () => {
       },
     });
     await confirmPayment({ ...paid, amountPaise: 21000 }, io);
-    expect(state.orders[0]).toMatchObject({ item: "Cold Brew", modifiers: "Cheese Croissant" });
+    expect(state.orders[0]).toMatchObject({ item: "Cold Brew", modifiers: "Less sugar", extras: "Cheese Croissant" });
   });
 
   test("a retried webhook does not place a second order", async () => {

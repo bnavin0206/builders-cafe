@@ -7,7 +7,7 @@ import {
   updateOrCreateSyncMapItem,
 } from "@/lib/twilio";
 import { cancelPaymentLink, createPaymentLink } from "@/lib/razorpay";
-import { redact, TwoWeeksInSeconds } from "@/lib/utils";
+import { redact, EventLengthInSeconds } from "@/lib/utils";
 import type { AttendeeRecord, Event } from "@/types";
 import type { CafeDeps } from "./flow";
 
@@ -30,7 +30,7 @@ export function realDeps(event: Event, sender: string, from: string): CafeDeps {
         ATTENDEES_MAP,
         phone,
         nullify(patch),
-        TwoWeeksInSeconds,
+        EventLengthInSeconds,
       );
     },
     send: (text) => {

@@ -7,9 +7,9 @@ export interface QuizQuestion {
   correct: 0 | 1 | 2;
 }
 
-// PLACEHOLDER questions. The client supplies the real 15 questions, their 3
+// PLACEHOLDER questions. The client supplies the real 20 questions, their 3
 // options and the correct option. Replace this list; nothing else changes.
-export const quizBank: QuizQuestion[] = Array.from({ length: 15 }, (_, i) => ({
+export const quizBank: QuizQuestion[] = Array.from({ length: 20 }, (_, i) => ({
   id: `q${i + 1}`,
   text: `Placeholder question ${i + 1}: which option is correct?`,
   options: ["Option A", "Option B", "Option C"] as [string, string, string],

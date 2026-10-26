@@ -3,10 +3,12 @@ import { Stages } from "@/types";
 
 const VERIFIED_STAGES: string[] = [
   Stages.VERIFIED_USER,
+  Stages.BLOCKED,
   Stages.QUIZ,
   Stages.QUIZ_FAILED,
   Stages.PICK_COFFEE,
-  Stages.PICK_SAVOURY,
+  Stages.PICK_ADDONS,
+  Stages.PICK_EXTRA,
   Stages.AWAITING_PAYMENT,
   Stages.FIRST_ORDER,
   Stages.REPEAT_CUSTOMER,

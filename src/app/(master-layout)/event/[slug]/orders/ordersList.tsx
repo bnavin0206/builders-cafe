@@ -167,6 +167,9 @@ export default function OrdersList({
               {data?.modifiers && (
                 <span className="text-gray-500 font-normal"> · {data.modifiers}</span>
               )}
+              {data?.extras && (
+                <span className="text-gray-500 font-normal"> + {data.extras}</span>
+              )}
             </h3>
             <p className="text-xs text-gray-400 truncate mt-0.5">
               {data?.manual ? data?.name : data?.address}

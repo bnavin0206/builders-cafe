@@ -37,5 +37,8 @@ export async function redact(address: string) {
 }
 
 export const TwoWeeksInSeconds = 2 * 7 * 24 * 60 * 60;
+// Attendee records must outlive the whole 5-week event, because the quiz
+// result and the once-per-event free coffee are remembered in them.
+export const EventLengthInSeconds = 6 * 7 * 24 * 60 * 60;
 export const regexForEmail = /[^@ \t\r\n]+@[^@ \t\r\n]+\.[^@ \t\r\n]+/;
 export const regexFor6ConsecutiveDigits = /\d{6}/;

@@ -57,12 +57,16 @@ export interface CafeInput {
   event: Event;
   phone: string;
   record: AttendeeRecord;
-  unlimited?: boolean;
 }
 
-const today = (deps: CafeDeps) => deps.now().toISOString().split("T")[0]!;
-
 const isReset = (m: string) => /^(menu|start|order|hi|hello)$/i.test(m.trim());
+const isNone = (m: string) =>
+  ["0", "no", "none", "skip", "no thanks"].includes(m.trim().toLowerCase());
+
+const isPicking = (stage?: string) =>
+  stage === Stages.PICK_COFFEE ||
+  stage === Stages.PICK_ADDONS ||
+  stage === Stages.PICK_EXTRA;
 
 /**
  * Entry point for every message from an attendee who has finished sign-up.
@@ -74,24 +78,44 @@ export async function handleCafeMessage(
   rules: CafeRules = cafeRules,
   bank: QuizQuestion[] = quizBank,
 ): Promise<void> {
-  const stage = input.record.stage;
+  const { stage } = input.record;
+  if (stage === Stages.BLOCKED) {
+    deps.send(msg.blocked);
+    return;
+  }
+  if (isPicking(stage) && isReset(input.message)) {
+    return begin(input, deps, rules, bank);
+  }
   switch (stage) {
     case Stages.QUIZ:
       return answerQuiz(input, deps, rules, bank);
     case Stages.PICK_COFFEE:
       return pickCoffee(input, deps, rules);
-    case Stages.PICK_SAVOURY:
-      return pickSavoury(input, deps, rules);
+    case Stages.PICK_ADDONS:
+      return pickAddOns(input, deps, rules);
+    case Stages.PICK_EXTRA:
+      return pickExtra(input, deps, rules);
     case Stages.AWAITING_PAYMENT:
       return awaitingPayment(input, deps);
+    case Stages.QUIZ_FAILED:
+      deps.send(msg.quizFailedEnd);
+      return;
+    case Stages.FIRST_ORDER:
+    case Stages.REPEAT_CUSTOMER:
+      if (!isReset(input.message)) {
+        deps.send(msg.idle);
+        return;
+      }
+      return begin(input, deps, rules, bank);
     default:
       return begin(input, deps, rules, bank);
   }
 }
 
 /**
- * Start a visit: quiz first, unless the attendee already passed it today.
- * Called after sign-up, and for any message from an idle attendee.
+ * Start a visit. Winners with the free coffee still unused see the free
+ * coffees. Everyone else sees the paid menu. Anyone who has not taken the quiz
+ * takes it first.
  */
 export async function begin(
   input: CafeInput,
@@ -100,20 +124,21 @@ export async function begin(
   bank: QuizQuestion[] = quizBank,
 ): Promise<void> {
   const { record, phone } = input;
-  const day = today(deps);
 
-  if (record.quizPassedDate === day) {
-    const mode = record.freeUsedDate === day ? "free-used" : "free";
-    return showCoffeeMenu(input, deps, mode === "free" ? "free" : "paid", {
-      intro: mode === "free-used" ? msg.freeUsed : msg.coffeePrompt,
-    });
+  if (record.quizResult === "failed") {
+    return showCoffeeMenu(input, deps, "paid", msg.quizFailedPaid);
   }
-  if (record.quizResult === "failed" && record.quizAttemptDate === day) {
-    return showCoffeeMenu(input, deps, "paid", { intro: msg.quizFailedPaid });
+  if (record.quizResult === "passed") {
+    return freeAvailable(record, rules)
+      ? showCoffeeMenu(input, deps, "free", msg.coffeePrompt)
+      : showCoffeeMenu(input, deps, "paid", msg.freeUsed);
   }
 
-  const attempts = record.quizAttemptDate === day ? (record.quizAttempts ?? 0) : 0;
-  const seen = record.quizAttemptDate === day ? (record.quizSeen ?? []) : [];
+  const attempts = record.quizAttempts ?? 0;
+  if (attempts >= rules.maxQuizAttempts) {
+    return failQuiz(input, deps, rules, record.quizCorrect ?? 0);
+  }
+  const seen = record.quizSeen ?? [];
   const ids = pickQuestions(bank, rules.quizQuestionCount, seen, deps.rng);
   await deps.save(phone, {
     stage: Stages.QUIZ,
@@ -122,11 +147,13 @@ export async function begin(
     quizIndex: 0,
     quizCorrect: 0,
     quizAttempts: attempts + 1,
-    quizAttemptDate: day,
-    quizResult: undefined,
   });
   deps.send(msg.quizIntro(rules.quizQuestionCount));
   deps.send(formatQuestion(questionById(bank, ids[0]!)!, 1, ids.length));
+}
+
+function freeAvailable(record: AttendeeRecord, rules: CafeRules): boolean {
+  return (record.freeCoffeesTaken ?? 0) < rules.freeCoffeesPerEvent;
 }
 
 async function answerQuiz(
@@ -139,7 +166,9 @@ async function answerQuiz(
   const ids = record.quizQuestions ?? [];
   const index = record.quizIndex ?? 0;
   const question = questionById(bank, ids[index] ?? "");
-  if (!question) return begin({ ...input, record: { ...record, stage: undefined } }, deps, rules, bank);
+  if (!question) {
+    return begin({ ...input, record: { ...record, stage: undefined } }, deps, rules, bank);
+  }
 
   const option = parseOption(message, question);
   if (option === null) {
@@ -151,25 +180,19 @@ async function answerQuiz(
   const correct = (record.quizCorrect ?? 0) + (isCorrect(question, option) ? 1 : 0);
   if (index + 1 < ids.length) {
     await deps.save(phone, { quizIndex: index + 1, quizCorrect: correct });
-    const next = questionById(bank, ids[index + 1]!)!;
-    deps.send(formatQuestion(next, index + 2, ids.length));
+    deps.send(
+      formatQuestion(questionById(bank, ids[index + 1]!)!, index + 2, ids.length),
+    );
     return;
   }
 
   // Last question answered.
   if (correct >= rules.passMark) {
-    await deps.save(phone, {
-      quizCorrect: correct,
-      quizResult: "passed",
-      quizPassedDate: today(deps),
-    });
-    const freeUsed = record.freeUsedDate === today(deps);
-    return showCoffeeMenu(
-      { ...input, record: { ...record, quizResult: "passed" } },
-      deps,
-      freeUsed ? "paid" : "free",
-      { intro: freeUsed ? msg.freeUsed : msg.quizPassed },
-    );
+    await deps.save(phone, { quizCorrect: correct, quizResult: "passed" });
+    const next = { ...input, record: { ...record, quizResult: "passed" as const } };
+    return freeAvailable(record, rules)
+      ? showCoffeeMenu(next, deps, "free", msg.quizPassed)
+      : showCoffeeMenu(next, deps, "paid", msg.freeUsed);
   }
 
   const attempts = record.quizAttempts ?? 1;
@@ -186,30 +209,46 @@ async function answerQuiz(
     deps.send(formatQuestion(questionById(bank, ids2[0]!)!, 1, ids2.length));
     return;
   }
+  return failQuiz(input, deps, rules, correct);
+}
 
-  await deps.save(phone, { quizCorrect: correct, quizResult: "failed" });
+async function failQuiz(
+  input: CafeInput,
+  deps: CafeDeps,
+  rules: CafeRules,
+  correct: number,
+) {
+  await deps.save(input.phone, { quizCorrect: correct, quizResult: "failed" });
   if (rules.failedQuizCanBuyPaidItems) {
-    return showCoffeeMenu(input, deps, "paid", { intro: msg.quizFailedPaid });
+    return showCoffeeMenu(
+      { ...input, record: { ...input.record, quizResult: "failed" } },
+      deps,
+      "paid",
+      msg.quizFailedPaid,
+    );
   }
-  await deps.save(phone, { stage: Stages.QUIZ_FAILED });
+  await deps.save(input.phone, { stage: Stages.QUIZ_FAILED });
   deps.send(msg.quizFailedEnd);
 }
 
+/** Free mode: free coffees only. Paid mode: priced coffees only. */
 function coffeeChoices(event: Event, mode: "free" | "paid"): MenuItem[] {
   const all = itemsIn(event.selection.items, "coffee");
-  return mode === "paid" ? all.filter((i) => !isFree(i)) : all;
+  return all.filter((i) => (mode === "free" ? isFree(i) : !isFree(i)));
 }
 
-function savouryChoices(event: Event, mode: "free" | "paid"): MenuItem[] {
-  const all = itemsIn(event.selection.items, "savoury");
-  return mode === "paid" ? all.filter((i) => !isFree(i)) : all;
+/** Paid items other than the coffee already chosen, drinks and snacks. */
+function extraChoices(event: Event, coffeeTitle: string | undefined): MenuItem[] {
+  return event.selection.items.filter(
+    (i) => !isFree(i) && i.title !== coffeeTitle,
+  );
 }
 
 async function showCoffeeMenu(
   input: CafeInput,
   deps: CafeDeps,
   mode: "free" | "paid",
-  opts: { intro: string | (() => string) },
+  intro: string,
 ) {
   const items = coffeeChoices(input.event, mode);
   if (items.length === 0) {
@@ -221,14 +260,13 @@ async function showCoffeeMenu(
     stage: Stages.PICK_COFFEE,
     menuMode: mode,
     cartCoffee: undefined,
+    cartAddOns: undefined,
   });
-  const intro = typeof opts.intro === "function" ? opts.intro() : opts.intro;
   deps.send(`${intro}\n\n${formatMenu(items)}`);
 }
 
 async function pickCoffee(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
   const { record, phone, message, event } = input;
-  if (isReset(message)) return showCoffeeMenu(input, deps, record.menuMode ?? "free", { intro: msg.coffeePrompt });
   const mode = record.menuMode ?? "free";
   const items = coffeeChoices(event, mode);
   const chosen = parseItem(message, items);
@@ -236,72 +274,116 @@ async function pickCoffee(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
     deps.send(`${msg.notOnMenu}\n\n${formatMenu(items)}`);
     return;
   }
-
-  if (isFree(chosen) && record.freeUsedDate === today(deps)) {
-    // Guard in case a stale menu was answered after the free item was used.
-    return showCoffeeMenu(input, deps, "paid", { intro: msg.freeUsed });
+  if (isFree(chosen) && !freeAvailable(record, rules)) {
+    // A stale free menu answered after the free coffee was taken.
+    return showCoffeeMenu(input, deps, "paid", msg.freeUsed);
   }
+  await deps.save(phone, { cartCoffee: chosen.title, cartAddOns: [] });
+  return askAddOns({ ...input, record: { ...record, cartCoffee: chosen.title } }, deps, rules);
+}
 
-  const savouries = savouryChoices(event, mode);
-  if (savouries.length === 0) {
-    return finalize(input, deps, rules, chosen.title, undefined);
+async function askAddOns(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
+  const { event, record, phone } = input;
+  const addOns = event.selection.modifiers;
+  if (addOns.length === 0) return askExtra(input, deps, rules);
+  await deps.save(phone, { stage: Stages.PICK_ADDONS });
+  const list = addOns.map((a, i) => `${i + 1}. ${a}`).join("\n");
+  deps.send(`${msg.addOnsPrompt(record.cartCoffee!)}\n\n${list}`);
+}
+
+/** "1", "1,3" or "1 3" into add-on names. Null if any part is not valid. */
+function parseAddOns(reply: string, addOns: string[]): string[] | null {
+  const parts = reply.split(/[\s,]+/).filter(Boolean);
+  if (parts.length === 0) return null;
+  const picked: string[] = [];
+  for (const p of parts) {
+    if (!/^\d+$/.test(p)) return null;
+    const name = addOns[Number(p) - 1];
+    if (!name) return null;
+    if (!picked.includes(name)) picked.push(name);
   }
-  await deps.save(phone, { stage: Stages.PICK_SAVOURY, cartCoffee: chosen.title });
-  deps.send(
-    `${msg.savouryPrompt(rules.savouryOptional)}\n\n${formatMenu(savouries)}`,
+  return picked;
+}
+
+async function pickAddOns(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
+  const { event, message, phone } = input;
+  const addOns = event.selection.modifiers;
+  let chosen: string[] = [];
+  if (!isNone(message)) {
+    const parsed = parseAddOns(message, addOns);
+    if (!parsed) {
+      const list = addOns.map((a, i) => `${i + 1}. ${a}`).join("\n");
+      deps.send(`${msg.addOnsInvalid}\n\n${list}`);
+      return;
+    }
+    chosen = parsed;
+  }
+  await deps.save(phone, { cartAddOns: chosen });
+  return askExtra(
+    { ...input, record: { ...input.record, cartAddOns: chosen } },
+    deps,
+    rules,
   );
 }
 
-async function pickSavoury(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
-  const { record, message, event } = input;
-  const coffee = record.cartCoffee;
-  if (!coffee) return showCoffeeMenu(input, deps, record.menuMode ?? "free", { intro: msg.coffeePrompt });
-
-  const text = message.trim().toLowerCase();
-  if (rules.savouryOptional && ["0", "no", "none", "skip", "no thanks"].includes(text)) {
-    return finalize(input, deps, rules, coffee, undefined);
+async function askExtra(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
+  const { event, record, phone } = input;
+  const choices = extraChoices(event, record.cartCoffee);
+  if (rules.maxExtraItems < 1 || choices.length === 0) {
+    return finalize(input, deps, rules, undefined);
   }
-  const items = savouryChoices(event, record.menuMode ?? "free");
-  const chosen = parseItem(message, items);
+  await deps.save(phone, { stage: Stages.PICK_EXTRA });
+  deps.send(`${msg.extraPrompt}\n\n${formatMenu(choices)}`);
+}
+
+async function pickExtra(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
+  const { event, record, message } = input;
+  if (!record.cartCoffee) return begin(input, deps, rules);
+  if (isNone(message)) return finalize(input, deps, rules, undefined);
+  const choices = extraChoices(event, record.cartCoffee);
+  const chosen = parseItem(message, choices);
   if (!chosen) {
-    deps.send(`${msg.notOnMenu}\n\n${formatMenu(items)}`);
+    deps.send(`${msg.notOnMenu}\n\n${formatMenu(choices)}`);
     return;
   }
-  return finalize(input, deps, rules, coffee, chosen.title);
+  return finalize(input, deps, rules, chosen);
 }
 
 function findItem(event: Event, title: string): MenuItem | undefined {
   return event.selection.items.find((i) => i.title === title);
 }
 
+export function orderSummary(
+  coffee: MenuItem,
+  addOns: string[] = [],
+  extra?: MenuItem,
+): string {
+  const base = addOns.length > 0 ? `${coffee.title} (${addOns.join(", ")})` : coffee.title;
+  return extra ? `${base} with ${extra.title}` : base;
+}
+
 async function finalize(
   input: CafeInput,
   deps: CafeDeps,
   rules: CafeRules,
-  coffeeTitle: string,
-  savouryTitle: string | undefined,
+  extra: MenuItem | undefined,
 ) {
   const { event, phone, record } = input;
-  const coffee = findItem(event, coffeeTitle);
-  const savoury = savouryTitle ? findItem(event, savouryTitle) : undefined;
-  if (!coffee) return showCoffeeMenu(input, deps, record.menuMode ?? "free", { intro: msg.coffeePrompt });
+  const coffee = record.cartCoffee ? findItem(event, record.cartCoffee) : undefined;
+  if (!coffee) return begin(input, deps, rules);
+  const addOns = record.cartAddOns ?? [];
 
-  const day = today(deps);
-  const dailyCount = record.dailyOrderDate === day ? Number(record.dailyOrderCount ?? 0) : 0;
-  if (!input.unlimited && dailyCount >= event.maxOrders) {
-    await deps.save(phone, { stage: Stages.VERIFIED_USER, cartCoffee: undefined });
-    deps.send(msg.dailyLimit(event.maxOrders));
-    return;
-  }
-
-  const chosen = [coffee, ...(savoury ? [savoury] : [])];
+  const chosen = [coffee, ...(extra ? [extra] : [])];
   const amount = totalPaise(chosen);
-  const lines = chosen.map((i) => `${i.title} (${formatPrice(i)})`);
+  const lines = [
+    ...chosen.map((i) => `${i.title} (${formatPrice(i)})`),
+    ...(addOns.length > 0 ? [`Add-ons: ${addOns.join(", ")}`] : []),
+  ];
   deps.send(msg.summary(lines, formatTotal(amount)));
 
   if (amount === 0) {
-    const n = await placeOrder(input, deps, { coffee, savoury, amountPaise: 0 });
-    deps.send(msg.orderPlaced(n, orderSummary(coffee, savoury)));
+    const n = await placeOrder(input, deps, { coffee, addOns, extra, amountPaise: 0 });
+    deps.send(msg.orderPlaced(n, orderSummary(coffee, addOns, extra)));
     return;
   }
 
@@ -315,45 +397,53 @@ async function finalize(
       name: record.fullName,
       email: record.email,
       expiresAt,
-      description: orderSummary(coffee, savoury),
+      description: orderSummary(coffee, addOns, extra),
     });
   } catch (e) {
     console.error(e);
-    await deps.save(phone, { stage: Stages.VERIFIED_USER, cartCoffee: undefined });
+    await deps.save(phone, { stage: Stages.VERIFIED_USER, cartCoffee: undefined, cartAddOns: undefined });
     deps.send(msg.paymentError);
     return;
   }
   const pending: PendingOrder = {
     coffee: coffee.title,
-    ...(savoury ? { savoury: savoury.title } : {}),
+    ...(addOns.length > 0 ? { addOns } : {}),
+    ...(extra ? { extra: extra.title } : {}),
     amountPaise: amount,
     linkId: link.id,
     linkUrl: link.url,
     expiresAt: expiresAt.toISOString(),
   };
-  await deps.save(phone, { stage: Stages.AWAITING_PAYMENT, pendingOrder: pending, cartCoffee: undefined });
+  await deps.save(phone, {
+    stage: Stages.AWAITING_PAYMENT,
+    pendingOrder: pending,
+    cartCoffee: undefined,
+    cartAddOns: undefined,
+  });
   deps.send(msg.payPrompt(link.url, rules.paymentExpiryMinutes));
-}
-
-export function orderSummary(coffee: MenuItem, savoury?: MenuItem): string {
-  return savoury ? `${coffee.title} with ${savoury.title}` : coffee.title;
 }
 
 /** Puts a free or paid order on the barista queue and updates the attendee. */
 export async function placeOrder(
   input: Pick<CafeInput, "event" | "phone" | "record">,
   deps: CafeDeps,
-  order: { coffee: MenuItem; savoury?: MenuItem; amountPaise: number; paymentId?: string },
+  order: {
+    coffee: MenuItem;
+    addOns?: string[];
+    extra?: MenuItem;
+    amountPaise: number;
+    paymentId?: string;
+  },
 ): Promise<number> {
   const { event, phone, record } = input;
-  const day = today(deps);
-  const dailyCount = record.dailyOrderDate === day ? Number(record.dailyOrderCount ?? 0) : 0;
   const orderCount = Number(record.orderCount ?? 0) + 1;
+  const addOns = order.addOns ?? [];
 
   const queued: Order = {
     key: phone,
     item: order.coffee.title,
-    ...(order.savoury ? { modifiers: order.savoury.title } : {}),
+    ...(addOns.length > 0 ? { modifiers: addOns.join(", ") } : {}),
+    ...(order.extra ? { extras: order.extra.title } : {}),
     status: "queued",
     channel: "whatsapp",
     amountPaise: order.amountPaise,
@@ -365,24 +455,25 @@ export async function placeOrder(
     stage: orderCount === 1 ? Stages.FIRST_ORDER : Stages.REPEAT_CUSTOMER,
     lastOrderNumber: n,
     orderCount,
-    dailyOrderCount: dailyCount + 1,
-    dailyOrderDate: day,
-    ...(isFree(order.coffee) ? { freeUsedDate: day } : {}),
+    ...(isFree(order.coffee)
+      ? { freeCoffeesTaken: Number(record.freeCoffeesTaken ?? 0) + 1 }
+      : {}),
     ...(order.paymentId ? { lastPaymentId: order.paymentId } : {}),
     pendingOrder: undefined,
     cartCoffee: undefined,
+    cartAddOns: undefined,
   });
   return n;
 }
 
 async function awaitingPayment(input: CafeInput, deps: CafeDeps) {
-  const { record, phone, message } = input;
+  const { record, phone } = input;
   const pending = record.pendingOrder;
   const expired = !pending || new Date(pending.expiresAt) <= deps.now();
-  if (/^cancel$/i.test(message.trim()) || expired) {
+  if (expired) {
     if (pending) await deps.cancelPaymentLink(pending.linkId);
     await deps.save(phone, { stage: Stages.VERIFIED_USER, pendingOrder: undefined });
-    deps.send(expired ? msg.payExpired : msg.payCancelled);
+    deps.send(msg.payExpired);
     return;
   }
   deps.send(msg.stillWaiting(pending.linkUrl));

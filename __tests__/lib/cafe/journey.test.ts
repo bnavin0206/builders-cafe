@@ -56,6 +56,9 @@ vi.mock("@/lib/twilio", () => {
     checkVerification: async (_sid: string, code: string) => ({ valid: code === "123456" }),
   };
 });
+vi.mock("@/app/webhooks/messaging/segment", () => ({
+  checkSegmentTraits: async (email?: string) => ({ foundInSegment: email === "seen@example.com" }),
+}));
 vi.mock("@/scripts/fetchContentTemplates", () => ({
   getReadyToOrderMessage: vi.fn(),
   getEventRegistrationMessage: vi.fn(),
@@ -96,11 +99,11 @@ function seedEvent() {
           cancelledCount: 0,
           selection: {
             mode: modes.barista,
-            modifiers: [],
+            modifiers: ["No sugar", "Less sugar"],
             items: [
               { title: "Americano", shortTitle: "Americano", description: "", price: 0, category: "coffee" },
               { title: "Cold Brew", shortTitle: "Cold Brew", description: "", price: 120, category: "coffee" },
-              { title: "Veg Puff", shortTitle: "Veg Puff", description: "", price: 0, category: "savoury" },
+              { title: "Veg Puff", shortTitle: "Veg Puff", description: "", price: 60, category: "savoury" },
               { title: "Cheese Croissant", shortTitle: "Cheese Croissant", description: "", price: 90, category: "savoury" },
             ],
           },
@@ -203,46 +206,88 @@ describe("full attendee journey through the webhooks", () => {
     expect(p.record.completedSignup).toBeUndefined();
   });
 
-  test("free coffee path: quiz, pick, no savoury, order queued, no payment", async () => {
+  test("someone found in Segment is blocked and never reaches the quiz", async () => {
+    const p = new Phone("+919800000010");
+    await p.signUp("Ravi", "seen@example.com");
+    expect(p.record).toMatchObject({ stage: "BLOCKED", foundInSegment: true, completedSignup: true });
+    expect(p.last).toContain("already taken part");
+    expect(p.inbox.some((m) => m.includes("Question 1"))).toBe(false);
+    await p.say("menu");
+    expect(p.last).toContain("already taken part");
+    expect(world.lists.get("builders-cafe") ?? []).toHaveLength(0);
+    expect(world.links).toHaveLength(0);
+  });
+
+  test("winner: free coffee, add-on, no extra: queued with no payment", async () => {
     const p = new Phone("+919800000003");
     await p.signUp();
     await p.passQuiz();
     expect(p.last).toContain("1. Americano (FREE)");
+    expect(p.last).not.toContain("Cold Brew");
     await p.say("1");
+    expect(p.last).toContain("1. No sugar");
+    await p.say("2");
+    expect(p.last).toContain("Veg Puff");
     await p.say("0");
     expect(world.links).toHaveLength(0);
     expect(world.lists.get("builders-cafe")).toEqual([
-      expect.objectContaining({ item: "Americano", status: "queued", amountPaise: 0, address: expect.stringContaining("****") }),
+      expect.objectContaining({
+        item: "Americano",
+        modifiers: "Less sugar",
+        status: "queued",
+        amountPaise: 0,
+        address: expect.stringContaining("****"),
+      }),
     ]);
-    expect(p.last).toBe("Order #1 confirmed: Americano. We'll message you when it's ready.");
+    expect(p.last).toBe("Order #1 confirmed: Americano (Less sugar). We'll message you when it's ready.");
     expect(p.record.stage).toBe("FIRST_ORDER");
+    expect(p.record.freeCoffeesTaken).toBe(1);
   });
 
-  test("paid path: nothing is queued until the payment webhook arrives", async () => {
+  test("winner with a paid snack: nothing is queued until payment arrives", async () => {
     const p = new Phone("+919800000004");
     await p.signUp();
     await p.passQuiz();
-    await p.say("2"); // Cold Brew
-    await p.say("2"); // Cheese Croissant
-    expect(world.links[0]).toMatchObject({ amountPaise: 21000, phone: "+919800000004", email: "asha@example.com" });
+    await p.say("1");
+    await p.say("0");
+    await p.say("2"); // Veg Puff is the second paid item after Cold Brew
+    expect(world.links[0]).toMatchObject({ amountPaise: 6000, phone: "+919800000004", email: "asha@example.com" });
     expect(p.last).toContain("https://rzp.io/i/1");
     expect(world.lists.get("builders-cafe") ?? []).toHaveLength(0);
 
-    const res = await payWebhook("plink_1", "+919800000004", "pay_9", 21000);
+    const res = await payWebhook("plink_1", "+919800000004", "pay_9", 6000);
     expect(res.status).toBe(200);
     expect(world.lists.get("builders-cafe")).toEqual([
-      expect.objectContaining({ item: "Cold Brew", modifiers: "Cheese Croissant", amountPaise: 21000, paymentId: "pay_9", status: "queued" }),
+      expect.objectContaining({ item: "Americano", extras: "Veg Puff", amountPaise: 6000, paymentId: "pay_9", status: "queued" }),
     ]);
-    expect(p.last).toBe("Payment received. Order #1 confirmed: Cold Brew with Cheese Croissant. We'll message you when it's ready.");
-    expect(p.record.stage).toBe("FIRST_ORDER");
+    expect(p.last).toBe("Payment received. Order #1 confirmed: Americano with Veg Puff. We'll message you when it's ready.");
+    expect(p.record.freeCoffeesTaken).toBe(1);
+  });
+
+  test("a wrong answer: paid menu only, then pay", async () => {
+    const p = new Phone("+919800000007");
+    await p.signUp();
+    for (let i = 0; i < 3; i++) {
+      const id = p.record.quizQuestions[p.record.quizIndex];
+      const q = quizBank.find((x) => x.id === id)!;
+      await p.say(String(((q.correct + 1) % 3) + 1));
+    }
+    expect(p.record.quizResult).toBe("failed");
+    expect(p.last).toContain("1. Cold Brew (₹120)");
+    expect(p.last).not.toContain("Americano");
+    await p.say("1");
+    await p.say("0");
+    await p.say("0");
+    expect(world.links[0]).toMatchObject({ amountPaise: 12000 });
   });
 
   test("a repeated webhook does not queue the order twice", async () => {
     const p = new Phone("+919800000005");
     await p.signUp();
     await p.passQuiz();
-    await p.say("2");
+    await p.say("1");
     await p.say("0");
+    await p.say("1"); // Cold Brew as the paid extra
     await payWebhook("plink_1", "+919800000005", "pay_1", 12000);
     await payWebhook("plink_1", "+919800000005", "pay_1", 12000);
     expect(world.lists.get("builders-cafe")).toHaveLength(1);
@@ -252,39 +297,27 @@ describe("full attendee journey through the webhooks", () => {
     const p = new Phone("+919800000006");
     await p.signUp();
     await p.passQuiz();
-    await p.say("2");
+    await p.say("1");
     await p.say("0");
+    await p.say("1");
     const res = await payWebhook("plink_1", "+919800000006", "pay_1", 12000, "bad");
     expect(res.status).toBe(400);
     expect(world.lists.get("builders-cafe") ?? []).toHaveLength(0);
     expect(p.record.stage).toBe("AWAITING_PAYMENT");
   });
 
-  test("failing the quiz twice leaves only paid items", async () => {
-    const p = new Phone("+919800000007");
-    await p.signUp();
-    for (let i = 0; i < 6; i++) {
-      const id = p.record.quizQuestions[p.record.quizIndex];
-      const q = quizBank.find((x) => x.id === id)!;
-      await p.say(String(((q.correct + 1) % 3) + 1));
-    }
-    expect(p.record.quizResult).toBe("failed");
-    expect(p.last).toContain("1. Cold Brew (₹120)");
-    expect(p.last).not.toContain("Americano");
-  });
-
-  test("waiting for payment, a message repeats the link; CANCEL cancels it", async () => {
+  test("while waiting a message repeats the link and cancel does nothing", async () => {
     const p = new Phone("+919800000008");
     await p.signUp();
     await p.passQuiz();
-    await p.say("2");
+    await p.say("1");
     await p.say("0");
+    await p.say("1");
     await p.say("hello?");
     expect(p.last).toContain("https://rzp.io/i/1");
     await p.say("cancel");
-    expect(world.cancelled).toEqual(["plink_1"]);
-    expect(p.record.pendingOrder).toBeNull();
-    expect(p.record.stage).toBe("VERIFIED_USER");
+    expect(world.cancelled).toEqual([]);
+    expect(p.record.stage).toBe("AWAITING_PAYMENT");
   });
 
   test("a closed event stops orders", async () => {

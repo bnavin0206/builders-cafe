@@ -12,12 +12,14 @@ import {
 import {
   Stages,
   sleep,
-  TwoWeeksInSeconds,
+  EventLengthInSeconds,
   regexForEmail,
   regexFor6ConsecutiveDigits,
 } from "@/lib/utils";
 import { checkSegmentTraits } from "./segment";
 import { startCafe } from "@/lib/cafe/start";
+import { cafeRules } from "@/config/cafe-rules";
+import { msg } from "@/lib/cafe/messages";
 import {
   eventLang,
   getDataPolicy,
@@ -74,7 +76,7 @@ export async function handleProfileMode(
       NEXT_PUBLIC_ATTENDEES_MAP,
       phone,
       { stage: Stages.VERIFIED_USER },
-      TwoWeeksInSeconds,
+      EventLengthInSeconds,
     );
     await sendReadyToOrder(sender, event, false, from);
     return true;
@@ -85,10 +87,12 @@ export async function handleProfileMode(
     stage === Stages.VERIFIED_USER ||
     stage === Stages.FIRST_ORDER ||
     stage === Stages.REPEAT_CUSTOMER ||
+    stage === Stages.BLOCKED ||
     stage === Stages.QUIZ ||
     stage === Stages.QUIZ_FAILED ||
     stage === Stages.PICK_COFFEE ||
-    stage === Stages.PICK_SAVOURY ||
+    stage === Stages.PICK_ADDONS ||
+    stage === Stages.PICK_EXTRA ||
     stage === Stages.AWAITING_PAYMENT
   ) {
     return false;
@@ -103,7 +107,7 @@ export async function handleProfileMode(
         fullName: sanitizeFullName(incomingMessageBody),
         stage: Stages.NAME_CONFIRMED,
       },
-      TwoWeeksInSeconds,
+      EventLengthInSeconds,
     );
     return true;
   }
@@ -140,7 +144,7 @@ export async function handleProfileMode(
       NEXT_PUBLIC_ATTENDEES_MAP,
       phone,
       { stage: Stages.VERIFYING, email, checkSid: check.sid },
-      TwoWeeksInSeconds,
+      EventLengthInSeconds,
     );
     return true;
   }
@@ -169,7 +173,7 @@ export async function handleProfileMode(
         NEXT_PUBLIC_ATTENDEES_MAP,
         phone,
         { checkSid: check.sid, email },
-        TwoWeeksInSeconds,
+        EventLengthInSeconds,
       );
       return true;
     }
@@ -210,20 +214,27 @@ export async function handleProfileMode(
       ]);
 
       const { SEGMENT_TRAIT_CHECK = "" } = process.env;
+      // Anyone already found in Segment may not take part (client rule).
+      const blocked =
+        cafeRules.blockIfFoundInSegment && segmentData.foundInSegment === true;
       await updateSyncMapItem(
         NEXT_PUBLIC_ATTENDEES_MAP,
         phone,
         {
-          stage: Stages.VERIFIED_USER,
+          stage: blocked ? Stages.BLOCKED : Stages.VERIFIED_USER,
           completedSignup: true,
           ...(SEGMENT_TRAIT_CHECK
             ? { [SEGMENT_TRAIT_CHECK]: (segmentData as any)[SEGMENT_TRAIT_CHECK] }
             : {}),
           foundInSegment: segmentData.foundInSegment,
         },
-        TwoWeeksInSeconds,
+        EventLengthInSeconds,
       );
 
+      if (blocked) {
+        sendMessage(sender, msg.blocked, undefined, undefined, from);
+        return true;
+      }
       await sendReadyToOrder(sender, event, false, from);
       return true;
     } catch (error) {

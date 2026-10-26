@@ -61,8 +61,8 @@ export async function confirmPayment(
   }
 
   const coffee = event.selection.items.find((i) => i.title === pending.coffee);
-  const savoury = pending.savoury
-    ? event.selection.items.find((i) => i.title === pending.savoury)
+  const extra = pending.extra
+    ? event.selection.items.find((i) => i.title === pending.extra)
     : undefined;
   if (!coffee) {
     console.error("Pending order item is no longer on the menu", pending);
@@ -72,10 +72,11 @@ export async function confirmPayment(
 
   const n = await placeOrder({ event, phone: paid.phone, record }, deps, {
     coffee,
-    savoury,
+    addOns: pending.addOns,
+    extra,
     amountPaise: paid.amountPaise,
     paymentId: paid.paymentId,
   });
-  deps.send(msg.paymentReceived(n, orderSummary(coffee, savoury)));
+  deps.send(msg.paymentReceived(n, orderSummary(coffee, pending.addOns, extra)));
   return "placed";
 }
