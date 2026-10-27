@@ -1,7 +1,18 @@
 import type { NextConfig } from "next";
 
+// In development, Next.js blocks scripts for pages opened through a tunnel
+// (ngrok) unless the host is listed. Taken from PUBLIC_BASE_URL.
+const tunnelHost = (() => {
+  try {
+    return new URL(process.env.PUBLIC_BASE_URL ?? "").hostname;
+  } catch {
+    return "";
+  }
+})();
+
 const nextConfig: NextConfig = {
   output: "standalone",
+  ...(tunnelHost ? { allowedDevOrigins: [tunnelHost] } : {}),
   serverExternalPackages: ["twilio", "twilio-agent-connect", "sharp", "pino", "thread-stream"],
   experimental: {},
   env: {
