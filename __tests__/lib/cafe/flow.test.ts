@@ -112,7 +112,7 @@ class Sim {
   async answer(correct: boolean) {
     const id = this.record.quizQuestions![this.record.quizIndex!]!;
     const q = quizBank.find((x) => x.id === id)!;
-    const option = correct ? q.correct : (q.correct + 1) % 3;
+    const option = correct ? q.correct : (q.correct + 1) % q.options.length;
     await this.say(String(option + 1));
   }
 

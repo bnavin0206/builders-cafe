@@ -10,7 +10,7 @@ export const msg = {
     `Welcome to Builder's Cafe! Answer ${count} quick questions to unlock your free coffee.`,
   quizRetry: (attemptsLeft: number) =>
     `Not quite. You have ${attemptsLeft} more ${attemptsLeft === 1 ? "try" : "tries"}, with new questions.`,
-  quizNeedsAnswer: "Please reply with 1, 2 or 3.",
+  quizNeedsAnswer: "Please reply with the number of your answer.",
   quizPassed:
     "All correct! Your coffee is free. Choose it by replying with its number.",
   quizFailedPaid:

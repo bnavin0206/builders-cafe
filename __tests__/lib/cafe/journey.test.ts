@@ -284,7 +284,7 @@ describe("full attendee journey through the webhooks", () => {
     for (let i = 0; i < 3; i++) {
       const id = p.record.quizQuestions[p.record.quizIndex];
       const q = quizBank.find((x) => x.id === id)!;
-      await p.say(String(((q.correct + 1) % 3) + 1));
+      await p.say(String(((q.correct + 1) % q.options.length) + 1));
     }
     expect(p.record.quizResult).toBe("failed");
     expect(p.last).toContain("1. Cold Brew (₹120)");
@@ -354,7 +354,7 @@ describe("full attendee journey through the webhooks", () => {
     for (let i = 0; i < 3; i++) {
       const id = p.record.quizQuestions[p.record.quizIndex];
       const q = quizBank.find((x) => x.id === id)!;
-      await p.say(String(((q.correct + 1) % 3) + 1)); // fails the quiz
+      await p.say(String(((q.correct + 1) % q.options.length) + 1)); // fails the quiz
     }
     expect(p.record.quizResult).toBe("failed");
     // Same number, now texting from SMS instead of WhatsApp.

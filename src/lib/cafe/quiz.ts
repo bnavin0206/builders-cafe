@@ -32,17 +32,23 @@ export function shuffle<T>(items: T[], rng: Rng = Math.random): T[] {
 export function parseOption(
   reply: string,
   question: QuizQuestion,
-): 0 | 1 | 2 | null {
+): number | null {
   const text = reply.trim().toLowerCase();
   if (!text) return null;
-  const letters = ["a", "b", "c"];
-  for (let i = 0; i < 3; i++) {
-    if (text === String(i + 1) || text === letters[i]) return i as 0 | 1 | 2;
+  const count = question.options.length;
+  for (let i = 0; i < count; i++) {
+    if (text === String(i + 1) || text === String.fromCharCode(97 + i)) return i;
   }
-  for (let i = 0; i < 3; i++) {
-    if (text === question.options[i]!.trim().toLowerCase()) return i as 0 | 1 | 2;
+  for (let i = 0; i < count; i++) {
+    if (text === question.options[i]!.trim().toLowerCase()) return i;
   }
   return null;
+}
+
+/** "1, 2 or 3", "1, 2, 3 or 4": the numbers an attendee may reply with. */
+export function replyChoices(question: QuizQuestion): string {
+  const nums = question.options.map((_, i) => String(i + 1));
+  return `${nums.slice(0, -1).join(", ")} or ${nums[nums.length - 1]}`;
 }
 
 export function isCorrect(question: QuizQuestion, option: number): boolean {
@@ -68,6 +74,6 @@ export function formatQuestion(
     "",
     ...lines,
     "",
-    "Reply with 1, 2 or 3.",
+    `Reply with ${replyChoices(question)}.`,
   ].join("\n");
 }
