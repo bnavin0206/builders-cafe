@@ -33,6 +33,9 @@ export const msg = {
   tooManyItems: (max: number) => `You can order up to ${max} items at a time.`,
   itemAdded: (name: string, so_far: string) =>
     `Added ${name}. So far: ${so_far}. Reply with more numbers, or 0 when you are done:`,
+  pickMore: (so_far: string) =>
+    `So far: ${so_far}. Reply with more numbers, or 0 when you are done:`,
+  pickFirst: "Reply with the numbers of the items you want, like 1 or 1,3:",
   notOnMenu: "Sorry, that is not on the menu. Please reply with a number.",
   noItems: "Sorry, nothing is available to order right now.",
   idle: "Reply MENU to order again.",
@@ -77,4 +80,6 @@ export const listMsg = {
   pickAtLeastOne: "Please pick at least one item from the list.",
   itemAdded: (name: string, so_far: string) =>
     `Added ${name}. So far: ${so_far}. Pick another, or tap Done.`,
+  pickMore: (so_far: string) => `So far: ${so_far}. Pick another, or tap Done.`,
+  pickFirst: "Tap Choose and pick items one at a time, then tap Done.",
 };

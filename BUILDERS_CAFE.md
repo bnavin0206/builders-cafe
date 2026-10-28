@@ -38,7 +38,13 @@ per row count; created by `create-twilio-res` and at app start) carry them.
 Each row's id is the option number, so a typed number or item name works too.
 If a list cannot be sent (template missing, more than 10 rows) the flow sends
 the plain numbered text menu instead. Lists only work inside the 24-hour chat
-window and need no Meta approval. Titles are cut to 24 characters and
+window and need no Meta approval. A list holds at most 10 rows, so a paid menu
+that does not fit with a Done row (the real menu has 10 drinks) is split into
+pages by each item's description (Hot, Cold): the items of one page, a row such
+as "Cold ▸" to switch page, and Done once something is picked (No thanks for a
+winner's extras). The cart is kept across pages. A menu that cannot be split
+(one group, or items without a description) falls back to the text menu with
+"type DONE"; so keep a description (Hot, Cold...) on every item of a long menu. Titles are cut to 24 characters and
 descriptions to 72. The webhook logs the field names of the first list reply
 ("Interactive reply fields") so they can be checked against what Twilio sends.
 

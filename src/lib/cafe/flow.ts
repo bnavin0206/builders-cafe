@@ -334,23 +334,91 @@ function menuChoices(event: Event, mode: "free" | "paid"): MenuItem[] {
   return itemsIn(event.selection.items, "coffee").filter(isFree);
 }
 
-/**
- * Rows for the paid-item list: every choice, plus Done (or No thanks) when
- * there is room. A WhatsApp list holds 10 rows, so a menu of 10 or more leaves
- * no room and listHint tells people to type it instead.
- */
-function itemRows(choices: MenuItem[], cart: string[], kind: "paid" | "extra"): ListRow[] {
-  const rows = choices.map((i, n) => itemRow(i, n + 1));
-  if (choices.length >= MAX_LIST_ROWS) return rows;
-  if (cart.length > 0) rows.push(noneRow("Done", "Continue with your order"));
-  else if (kind === "extra") rows.push(noneRow("No thanks", "Place my order as is"));
-  return rows;
+/** Groups of a long menu, by description (Hot, Cold...), in order of first appearance. */
+function groupsOf(choices: MenuItem[]): string[] {
+  const groups: string[] = [];
+  for (const i of choices) {
+    const g = (i.description ?? "").trim();
+    if (!groups.includes(g)) groups.push(g);
+  }
+  return groups;
 }
 
-function listHint(choices: MenuItem[], cart: string[], kind: "paid" | "extra"): string {
-  if (choices.length < MAX_LIST_ROWS) return "";
-  if (cart.length > 0) return " Type DONE when you have finished.";
-  return kind === "extra" ? " Or type NO if you want nothing extra." : "";
+interface ItemPage {
+  rows: ListRow[];
+  /** The group being shown when the menu had to be split, else null. */
+  group: string | null;
+  /** What to tell people to type when the list has no room for Done. */
+  hint: string;
+}
+
+/**
+ * The rows of the paid-item list. A WhatsApp list holds 10 rows, so a menu that
+ * fits (with its Done or No thanks row) is one list. A longer menu is split by
+ * group: the items of one group, a row to switch to each other group, and Done.
+ * If it cannot be split (one group, or items with no description), the list
+ * shows the items only and `hint` tells people to type DONE (or NO).
+ */
+function itemPage(
+  choices: MenuItem[],
+  cart: string[],
+  kind: "paid" | "extra",
+  group?: string,
+): ItemPage {
+  const finish: ListRow[] =
+    cart.length > 0
+      ? [noneRow("Done", "Continue with your order")]
+      : kind === "extra"
+        ? [noneRow("No thanks", "Place my order as is")]
+        : [];
+  const all = choices.map((i, n) => itemRow(i, n + 1));
+  // Decide on paging as if a Done row were always there, so the list keeps
+  // the same shape before and after the first tap.
+  if (all.length + 1 <= MAX_LIST_ROWS) {
+    return { rows: [...all, ...finish], group: null, hint: "" };
+  }
+
+  const groups = groupsOf(choices);
+  if (groups.length > 1 && groups.every(Boolean)) {
+    const shown = group && groups.includes(group) ? group : groups[0]!;
+    const rows: ListRow[] = [];
+    choices.forEach((i, n) => {
+      if ((i.description ?? "").trim() === shown) rows.push(itemRow(i, n + 1));
+    });
+    groups.forEach((g, gi) => {
+      if (g === shown) return;
+      rows.push({
+        id: `page:${gi}`,
+        title: clip(`${g} ▸`, LIST_TITLE_MAX),
+        description: clip(`Show the ${g} items`, LIST_DESCRIPTION_MAX),
+      });
+    });
+    rows.push(...finish);
+    return { rows, group: shown, hint: "" };
+  }
+
+  const hint =
+    cart.length > 0
+      ? " Type DONE when you have finished."
+      : kind === "extra"
+        ? " Or type NO if you want nothing extra."
+        : "";
+  return { rows: all.length <= MAX_LIST_ROWS ? all : [], group: null, hint };
+}
+
+/** Prompt text for a page: which group is showing, or the typed hint. */
+function pageNote(page: ItemPage): string {
+  return page.group ? `\n\nShowing: ${page.group}` : page.hint;
+}
+
+/** A reply that switches the page: the row id "page:1" or the group's name. */
+function parseGroupSwitch(reply: string, groups: string[]): string | null {
+  if (groups.length < 2) return null;
+  // A tapped row can arrive as its title ("Cold ▸") instead of its id.
+  const text = reply.replace(/▸/g, "").trim();
+  const byId = /^page:(\d+)$/i.exec(text);
+  if (byId) return groups[Number(byId[1])] ?? null;
+  return groups.find((g) => g && g.toLowerCase() === text.toLowerCase()) ?? null;
 }
 
 async function showCoffeeMenu(
@@ -370,14 +438,15 @@ async function showCoffeeMenu(
     menuMode: mode,
     cartCoffee: undefined,
     cartItems: undefined,
+    cartGroup: undefined,
     cartAddOns: undefined,
   });
-  await offer(
-    deps,
-    intro,
-    mode === "paid" ? itemRows(items, [], "paid") : items.map((i, n) => itemRow(i, n + 1)),
-    formatMenu(items),
-  );
+  if (mode === "paid") {
+    const page = itemPage(items, [], "paid");
+    await offer(deps, { text: intro.text, list: intro.list + pageNote(page) }, page.rows, formatMenu(items));
+  } else {
+    await offer(deps, intro, items.map((i, n) => itemRow(i, n + 1)), formatMenu(items));
+  }
 }
 
 async function pickCoffee(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
@@ -424,13 +493,34 @@ async function pickItems(
   const choices = menuChoices(event, "paid");
   const current = record.cartItems ?? [];
   const room = rules.maxItemsPerOrder - (record.cartCoffee ? 1 : 0);
-  const again = (prompt: { text: string; list: string }, cart = current) =>
-    offer(
+  const showing = record.cartGroup ?? undefined;
+  const again = (
+    prompt: { text: string; list: string },
+    cart = current,
+    group = showing,
+  ) => {
+    const page = itemPage(choices, cart, kind, group);
+    return offer(
       deps,
-      { text: prompt.text, list: prompt.list + listHint(choices, cart, kind) },
-      itemRows(choices, cart, kind),
+      { text: prompt.text, list: prompt.list + pageNote(page) },
+      page.rows,
       formatMenu(choices),
     );
+  };
+
+  // A tap on "Cold >" (or typing the group's name) shows that page, adds nothing.
+  const switchTo = deps.sendList ? parseGroupSwitch(message, groupsOf(choices)) : null;
+  if (switchTo !== null) {
+    await deps.save(phone, { cartGroup: switchTo });
+    const prompt =
+      current.length > 0
+        ? { text: msg.pickMore(summarizeItems(current)), list: listMsg.pickMore(summarizeItems(current)) }
+        : kind === "extra"
+          ? { text: msg.extraPrompt, list: listMsg.extraPrompt }
+          : { text: msg.pickFirst, list: listMsg.pickFirst };
+    await again(prompt, current, switchTo);
+    return;
+  }
 
   if (isNone(message)) {
     if (kind === "paid" && current.length === 0) {
@@ -453,16 +543,14 @@ async function pickItems(
 
   const next = [...current, ...picks.map((i) => i.title)];
   if (deps.sendList && picks.length === 1 && next.length < room) {
-    const rows = itemRows(choices, next, kind);
+    const page = itemPage(choices, next, kind, showing);
     const so_far = summarizeItems(next);
     if (
-      rows.length <= MAX_LIST_ROWS &&
+      page.rows.length >= 1 &&
+      page.rows.length <= MAX_LIST_ROWS &&
       (await deps.sendList(
-        clip(
-          listMsg.itemAdded(picks[0]!.title, so_far) + listHint(choices, next, kind),
-          LIST_BODY_MAX,
-        ),
-        rows,
+        clip(listMsg.itemAdded(picks[0]!.title, so_far) + pageNote(page), LIST_BODY_MAX),
+        page.rows,
       ))
     ) {
       await deps.save(phone, { cartItems: next });
@@ -479,8 +567,8 @@ async function itemsDone(
   kind: "paid" | "extra",
   items: string[],
 ) {
-  await deps.save(input.phone, { cartItems: items });
-  const next = { ...input, record: { ...input.record, cartItems: items } };
+  await deps.save(input.phone, { cartItems: items, cartGroup: undefined });
+  const next = { ...input, record: { ...input.record, cartItems: items, cartGroup: undefined } };
   // A paid-menu order asks for add-ons now (if it has a drink); extras come
   // after the add-ons, so the order is ready to total.
   return kind === "paid" ? askAddOns(next, deps, rules) : finalize(next, deps, rules);
@@ -605,11 +693,12 @@ async function askExtra(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
   if (rules.maxItemsPerOrder <= 1 || choices.length === 0) {
     return finalize(input, deps, rules);
   }
-  await deps.save(phone, { stage: Stages.PICK_EXTRA, cartItems: [] });
+  await deps.save(phone, { stage: Stages.PICK_EXTRA, cartItems: [], cartGroup: undefined });
+  const page = itemPage(choices, [], "extra");
   await offer(
     deps,
-    { text: msg.extraPrompt, list: listMsg.extraPrompt + listHint(choices, [], "extra") },
-    itemRows(choices, [], "extra"),
+    { text: msg.extraPrompt, list: listMsg.extraPrompt + pageNote(page) },
+    page.rows,
     formatMenu(choices),
   );
 }
@@ -706,6 +795,7 @@ async function finalize(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
       stage: Stages.VERIFIED_USER,
       cartCoffee: undefined,
       cartItems: undefined,
+      cartGroup: undefined,
       cartAddOns: undefined,
     });
     deps.send(msg.paymentError);
@@ -725,6 +815,7 @@ async function finalize(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
     pendingOrder: pending,
     cartCoffee: undefined,
     cartItems: undefined,
+    cartGroup: undefined,
     cartAddOns: undefined,
   });
   deps.send(msg.payPrompt(link.url, rules.paymentExpiryMinutes));
@@ -775,6 +866,7 @@ export async function placeOrder(
     pendingOrder: undefined,
     cartCoffee: undefined,
     cartItems: undefined,
+    cartGroup: undefined,
     cartAddOns: undefined,
   });
   return n;

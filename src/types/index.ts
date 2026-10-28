@@ -173,6 +173,8 @@ export interface AttendeeRecord {
   cartCoffee?: string;
   // Paid items chosen so far, one entry per unit.
   cartItems?: string[];
+  // Which page (group, such as Hot or Cold) of a long paid list was last shown.
+  cartGroup?: string;
   cartAddOns?: string[];
   pendingOrder?: PendingOrder;
   lastPaymentId?: string;
