@@ -119,7 +119,16 @@ Open items that must be settled and checked before go-live:
   decision from the client.
 - [ ] Confirm the DEFAULT and CLIENT rules in `src/config/cafe-rules.ts`.
 - [ ] What "found in Segment" means (see the client document).
-- [ ] Display board for ready order numbers (not built).
+- [ ] **Order display (decision pending, not built).** A full-screen page for
+  a TV, `/event/<slug>/board`, showing the order numbers that are ready (large)
+  and preparing (smaller), refreshing every few seconds. An order appears when
+  the barista clicks the check mark and leaves when it is marked served.
+  Proposed: numbers only (first names would put personal data on a public
+  screen); an open page fed by a read-only endpoint that returns only order
+  numbers, so a TV needs no login (the alternative is the kiosk login,
+  `KIOSK_LOGIN`); show Preparing as well as Ready; highlight a newly ready
+  order, with no sound because browsers block autoplay. To decide: numbers
+  only or with first name, open page or login, Preparing shown or not.
 - [ ] **Pickup flow and the "order ready" message.** Built: each order keeps
   the attendee's sign-up name, the dashboard shows it next to the masked
   number, and the ready message now reads "Your {item} is ready. Please show
