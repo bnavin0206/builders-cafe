@@ -172,7 +172,9 @@ export default function OrdersList({
               )}
             </h3>
             <p className="text-xs text-gray-400 truncate mt-0.5">
-              {data?.manual ? data?.name : data?.address}
+              {data?.manual
+                ? data?.name
+                : [data?.name, data?.address].filter(Boolean).join(" · ")}
               {data?.originalText && (
                 <span className="ml-1 italic">&ldquo;{data.originalText}&rdquo;</span>
               )}

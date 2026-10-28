@@ -482,6 +482,7 @@ export async function placeOrder(
 
   const queued: Order = {
     key: phone,
+    ...(record.fullName ? { name: record.fullName } : {}),
     item: order.coffee.title,
     ...(addOns.length > 0 ? { modifiers: addOns.join(", ") } : {}),
     ...(order.extra ? { extras: order.extra.title } : {}),

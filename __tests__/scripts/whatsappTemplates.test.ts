@@ -1,4 +1,7 @@
-import { getShowHelpTemplate } from "@/scripts/buildContentTemplates";
+import {
+  getOrderReadyTemplate,
+  getShowHelpTemplate,
+} from "@/scripts/buildContentTemplates";
 import { describe, expect, test } from "vitest";
 
 describe("getShowHelpTemplate", () => {
@@ -39,5 +42,38 @@ describe("getShowHelpTemplate", () => {
     const result = getShowHelpTemplate(numOptions, "testTemplate");
     const values = Object.values(result.variables);
     values.forEach((value) => expect(value).not.toBe(""));
+  });
+});
+
+describe("getOrderReadyTemplate", () => {
+  const base = "https://example.test";
+
+  test.each(["en", "pt-BR", "fr"] as const)(
+    "%s: every variant shows the order number and the pickup place",
+    (lang) => {
+      const t = getOrderReadyTemplate("t", base, lang);
+      const bodies = [
+        t.types["whatsapp/card"]!.body,
+        t.types["twilio/card"]!.body,
+        t.types["twilio/text"]!.body,
+      ];
+      for (const body of bodies) {
+        expect(body).toContain("{{1}}");
+        expect(body).toContain("{{2}}");
+      }
+      expect(t.types["twilio/text"]!.body).toContain("{{0}}");
+      expect(Object.keys(t.variables)).toEqual(["0", "1", "2"]);
+    },
+  );
+
+  test("English asks for the order number or the name and wishes an enjoyable drink", () => {
+    const body = getOrderReadyTemplate("t", base, "en").types["twilio/text"]!.body;
+    expect(body).toContain("order number *{{1}}* or your name");
+    expect(body).toContain("Enjoy your drink!");
+  });
+
+  test("the image address is built from the base URL", () => {
+    const t = getOrderReadyTemplate("t", base, "en");
+    expect(t.types["whatsapp/card"]!.media).toEqual([`${base}/rcs-resources/ready.png`]);
   });
 });

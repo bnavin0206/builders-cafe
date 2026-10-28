@@ -261,6 +261,26 @@ describe("free coffee with add-ons", () => {
     expect(s.record.lastOrderNumber).toBe(101);
   });
 
+  test("the attendee's name is saved on the order", async () => {
+    const s = new Sim();
+    await s.passQuiz();
+    await s.say("2"); // Latte
+    await s.say("0");
+    await s.say("0");
+    expect(s.orders[0]).toMatchObject({ item: "Latte", name: "Asha" });
+  });
+
+  test("an order is still queued when the record has no name", async () => {
+    const s = new Sim();
+    delete s.record.fullName;
+    await s.passQuiz();
+    await s.say("2");
+    await s.say("0");
+    await s.say("0");
+    expect(s.orders).toHaveLength(1);
+    expect(s.orders[0]!.name).toBeUndefined();
+  });
+
   test("add-ons are saved on the order", async () => {
     const s = new Sim();
     await s.passQuiz();

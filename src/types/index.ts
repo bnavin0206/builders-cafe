@@ -61,6 +61,8 @@ export interface Order {
   item: string;
   modifiers?: string;
   address?: string;
+  // Attendee's sign-up name, so staff can match a pickup by name.
+  name?: string;
   orderNumber?: number;
   originalText?: string;
   status: "queued" | "cancelled" | "ready" | "delivered";

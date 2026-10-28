@@ -249,6 +249,7 @@ describe("full attendee journey through the webhooks", () => {
         item: "Americano",
         modifiers: "Less sugar",
         status: "queued",
+        name: "Asha Rao",
         amountPaise: 0,
         address: expect.stringContaining("****"),
       }),
@@ -272,7 +273,7 @@ describe("full attendee journey through the webhooks", () => {
     const res = await payWebhook("plink_1", "+919800000004", "pay_9", 6000);
     expect(res.status).toBe(200);
     expect(world.lists.get("builders-cafe")).toEqual([
-      expect.objectContaining({ item: "Americano", extras: "Veg Puff", amountPaise: 6000, paymentId: "pay_9", status: "queued" }),
+      expect.objectContaining({ item: "Americano", extras: "Veg Puff", amountPaise: 6000, paymentId: "pay_9", status: "queued", name: "Asha Rao" }),
     ]);
     expect(p.last).toBe("Payment received. Order #1 confirmed: Americano with Veg Puff. We'll message you when it's ready.");
     expect(p.record.freeCoffeesTaken).toBe(1);

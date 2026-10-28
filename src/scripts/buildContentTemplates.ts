@@ -372,28 +372,28 @@ export function getOrderReadyTemplate(
   language: Language = "en",
 ): WhatsAppTemplateConfig {
   const cardBody = language === "pt-BR"
-    ? "Pule a fila e retire seu {{0}} no {{2}}. \nTenha o número do seu pedido em mãos no balcão."
+    ? "Seu {{0}} está pronto ☕\nApresente o número do pedido *{{1}}* ou seu nome no {{2}}. Aproveite sua bebida!"
     : language === "fr"
-      ? "Évitez la file d'attente et récupérez votre {{0}} au {{2}}. \nPensez à montrer votre numéro de commande au comptoir."
-      : "Skip the line and collect your {{0}} at the {{2}}. \nBe ready to share your order number at the counter.";
+      ? "Votre {{0}} est prêt ☕\nPrésentez le numéro de commande *{{1}}* ou votre nom au {{2}}. Profitez de votre boisson\u00A0!"
+      : "Your {{0}} is ready ☕\nPlease show order number *{{1}}* or your name at the {{2}}. Enjoy your drink!";
 
   const cardTitle = language === "pt-BR"
-    ? "Pule a fila e retire seu {{0}} no {{2}}. \n\n"
+    ? "Seu {{0}} está pronto ☕\n\n"
     : language === "fr"
-      ? "Évitez la file d'attente et récupérez votre {{0}} au {{2}}. \n\n"
-      : "Skip the line and collect your {{0}} at the {{2}}. \n\n";
+      ? "Votre {{0}} est prêt ☕\n\n"
+      : "Your {{0}} is ready ☕\n\n";
 
   const cardBodyShort = language === "pt-BR"
-    ? "Peça pelo número do pedido *{{1}}* ao retirar."
+    ? "Apresente o número do pedido *{{1}}* ou seu nome no {{2}}. Aproveite sua bebida!"
     : language === "fr"
-      ? "Demandez le numéro de commande *{{1}}* lors du retrait."
-      : "Ask for order number *{{1}}* when you pick it up.";
+      ? "Présentez le numéro de commande *{{1}}* ou votre nom au {{2}}. Profitez de votre boisson\u00A0!"
+      : "Show order number *{{1}}* or your name at the {{2}}. Enjoy your drink!";
 
   const textBody = language === "pt-BR"
-    ? "Seu {{0}} está pronto.\n\nPule a fila e retire agora no {{2}}. \n\nPeça pelo número do pedido *{{1}}* ao retirar."
+    ? "Seu {{0}} está pronto ☕\n\nApresente o número do pedido *{{1}}* ou seu nome no {{2}}. Aproveite sua bebida!"
     : language === "fr"
-      ? "Votre commande est prête\u00A0: {{0}}.\n\nÉvitez la file d'attente et récupérez-la maintenant au {{2}}. \n\nDemandez le numéro de commande *{{1}}* lors du retrait."
-      : "Your {{0}} is ready.\n\nSkip the line and collect it at the {{2}} right away. \n\nAsk for order number *{{1}}* when you pick it up.";
+      ? "Votre {{0}} est prêt ☕\n\nPrésentez le numéro de commande *{{1}}* ou votre nom au {{2}}. Profitez de votre boisson\u00A0!"
+      : "Your {{0}} is ready ☕\n\nPlease show order number *{{1}}* or your name at the {{2}}. Enjoy your drink!";
 
   return {
     friendly_name: templateName,

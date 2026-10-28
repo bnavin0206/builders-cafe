@@ -107,17 +107,16 @@ Open items that must be settled and checked before go-live:
 - [ ] Confirm the DEFAULT and CLIENT rules in `src/config/cafe-rules.ts`.
 - [ ] What "found in Segment" means (see the client document).
 - [ ] Display board for ready order numbers (not built).
-- [ ] **Pickup flow and the "order ready" message (decision pending).**
-  Proposed: the barista clicks the green check when the coffee is ready, the
-  customer gets a WhatsApp message, counter staff match the order number or
-  the name, hand over the coffee and click Served. Open points: (1) the order
-  keeps only a masked phone number, so the dashboard cannot show the
-  attendee's name; add the sign-up name to the order and show it on each row;
-  (2) the ready message says "Skip the line and collect it at ..." and does
-  not say "enjoy the drink" or mention the name. Changing it means
-  recreating the `order_ready` templates (en, pt-BR, fr) on Twilio, and a
-  real WhatsApp sender needs Meta to approve the new text; (3) whether to
-  send a follow-up message when an order is marked served.
+- [ ] **Pickup flow and the "order ready" message.** Built: each order keeps
+  the attendee's sign-up name, the dashboard shows it next to the masked
+  number, and the ready message now reads "Your {item} is ready. Please show
+  order number {N} or your name at the {pickup}. Enjoy your drink!" (en,
+  pt-BR, fr). To finish: recreate the `order_ready` templates on Twilio
+  (`OVERRIDE_TEMPLATES=1 pnpm run create-twilio-res` deletes and recreates
+  all `mixologist_` templates), and for a real WhatsApp sender get the new
+  text approved by Meta. Still undecided: a follow-up message when an order is
+  marked served. Razorpay links already carry the attendee's name, email and
+  phone.
 - [ ] Replace the placeholders: 20 quiz questions, add-ons, prices, menu.
 - [ ] Switch Razorpay and the WhatsApp sender from test to live.
 - [ ] Rotate every key and password that was used during testing.
