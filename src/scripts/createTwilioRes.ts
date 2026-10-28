@@ -153,7 +153,7 @@ async function createWhatsAppTemplates() {
       templateName = `${CONTENT_PREFIX}order_ready${suffix}`;
       checkIfExistsOrCreateTemplate(
         templateName,
-        getOrderReadyTemplate(templateName, PUBLIC_BASE_URL, lang),
+        getOrderReadyTemplate(templateName, lang),
         templates,
       );
 

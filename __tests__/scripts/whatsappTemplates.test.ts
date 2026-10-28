@@ -47,36 +47,25 @@ describe("getShowHelpTemplate", () => {
 });
 
 describe("getOrderReadyTemplate", () => {
-  const base = "https://example.test";
-
   test.each(["en", "pt-BR", "fr"] as const)(
-    "%s: every variant shows the order number and the pickup place",
+    "%s: plain text with the item, order number and pickup place",
     (lang) => {
-      const t = getOrderReadyTemplate("t", base, lang);
-      const bodies = [
-        t.types["whatsapp/card"]!.body,
-        t.types["twilio/card"]!.body,
-        t.types["twilio/text"]!.body,
-      ];
-      for (const body of bodies) {
-        expect(body).toContain("{{2}}"); // order number
-        expect(body).toContain("{{3}}"); // pickup place
-        expect(body).not.toContain("{{0}}");
-      }
-      expect(t.types["twilio/text"]!.body).toContain("{{1}}"); // item
+      const t = getOrderReadyTemplate("t", lang);
+      // Card templates without buttons are rejected by Twilio when sent.
+      expect(Object.keys(t.types)).toEqual(["twilio/text"]);
+      const body = t.types["twilio/text"]!.body;
+      expect(body).toContain("{{1}}"); // item
+      expect(body).toContain("{{2}}"); // order number
+      expect(body).toContain("{{3}}"); // pickup place
+      expect(body).not.toContain("{{0}}");
       expect(Object.keys(t.variables)).toEqual(["1", "2", "3"]);
     },
   );
 
   test("English asks for the order number or the name and wishes an enjoyable drink", () => {
-    const body = getOrderReadyTemplate("t", base, "en").types["twilio/text"]!.body;
+    const body = getOrderReadyTemplate("t", "en").types["twilio/text"]!.body;
     expect(body).toContain("order number *{{2}}* or your name");
     expect(body).toContain("Enjoy your drink!");
-  });
-
-  test("the image address is built from the base URL", () => {
-    const t = getOrderReadyTemplate("t", base, "en");
-    expect(t.types["whatsapp/card"]!.media).toEqual([`${base}/rcs-resources/ready.png`]);
   });
 });
 

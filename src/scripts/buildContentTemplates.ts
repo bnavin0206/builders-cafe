@@ -368,57 +368,27 @@ export function getOrderCancelledTemplate(
 
 export function getOrderReadyTemplate(
   templateName: string,
-  baseUrl: string,
   language: Language = "en",
 ): WhatsAppTemplateConfig {
-  const cardBody = language === "pt-BR"
-    ? "Seu {{1}} está pronto ☕\nApresente o número do pedido *{{2}}* ou seu nome no {{3}}. Aproveite sua bebida!"
-    : language === "fr"
-      ? "Votre {{1}} est prêt ☕\nPrésentez le numéro de commande *{{2}}* ou votre nom au {{3}}. Profitez de votre boisson\u00A0!"
-      : "Your {{1}} is ready ☕\nPlease show order number *{{2}}* or your name at the {{3}}. Enjoy your drink!";
-
-  const cardTitle = language === "pt-BR"
-    ? "Seu {{1}} está pronto ☕\n\n"
-    : language === "fr"
-      ? "Votre {{1}} est prêt ☕\n\n"
-      : "Your {{1}} is ready ☕\n\n";
-
-  const cardBodyShort = language === "pt-BR"
-    ? "Apresente o número do pedido *{{2}}* ou seu nome no {{3}}. Aproveite sua bebida!"
-    : language === "fr"
-      ? "Présentez le numéro de commande *{{2}}* ou votre nom au {{3}}. Profitez de votre boisson\u00A0!"
-      : "Show order number *{{2}}* or your name at the {{3}}. Enjoy your drink!";
-
   const textBody = language === "pt-BR"
     ? "Seu {{1}} está pronto ☕\n\nApresente o número do pedido *{{2}}* ou seu nome no {{3}}. Aproveite sua bebida!"
     : language === "fr"
       ? "Votre {{1}} est prêt ☕\n\nPrésentez le numéro de commande *{{2}}* ou votre nom au {{3}}. Profitez de votre boisson\u00A0!"
       : "Your {{1}} is ready ☕\n\nPlease show order number *{{2}}* or your name at the {{3}}. Enjoy your drink!";
 
+  // Plain text only. Twilio rejects every send of a card template that has no
+  // buttons ("Content Variables parameter is invalid", error 21656), with
+  // any values, while text templates are accepted.
   return {
     friendly_name: templateName,
     language: langCode(language),
-    // Numbered from 1, as Twilio's content docs describe. {{0}} was rejected
-    // when sending (error 21656).
+    // Numbered from 1, as Twilio's content docs describe.
     variables: {
       "1": "order item",
       "2": "order number",
       "3": "order pickup location",
     },
     types: {
-      "whatsapp/card": {
-        actions: [],
-        body: cardBody,
-        media: [
-          `${baseUrl}/rcs-resources/ready${language === "pt-BR" ? "_ptbr" : language === "fr" ? "_fr" : ""}.png`,
-        ],
-      },
-      "twilio/card": {
-        media: [`${baseUrl}/rcs-resources/ready${language === "pt-BR" ? "_ptbr" : language === "fr" ? "_fr" : ""}.png`],
-        orientation: "VERTICAL",
-        title: cardTitle,
-        body: cardBodyShort,
-      },
       "twilio/text": {
         body: textBody,
       },
