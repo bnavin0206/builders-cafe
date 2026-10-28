@@ -10,7 +10,6 @@ import {
   getEventRegistrationTemplate,
   getOrderCancelledTemplate,
   getOrderReadyTemplate,
-  getOrderReminderTemplate,
   getReadyToOrderLimitlessTemplate,
   getReadyToOrderLimitlessWithoutEmailValidationTemplate,
   getReadyToOrderTemplate,
@@ -154,14 +153,6 @@ async function createWhatsAppTemplates() {
       checkIfExistsOrCreateTemplate(
         templateName,
         getOrderReadyTemplate(templateName, lang),
-        templates,
-      );
-
-      // 9. Order reminder templates
-      templateName = `${CONTENT_PREFIX}order_reminder${suffix}`;
-      checkIfExistsOrCreateTemplate(
-        templateName,
-        getOrderReminderTemplate(templateName, lang),
         templates,
       );
     }

@@ -48,24 +48,21 @@ describe("getShowHelpTemplate", () => {
 
 describe("getOrderReadyTemplate", () => {
   test.each(["en", "pt-BR", "fr"] as const)(
-    "%s: plain text with the item, order number and pickup place",
+    "%s: plain text that names only the item",
     (lang) => {
       const t = getOrderReadyTemplate("t", lang);
       // Card templates without buttons are rejected by Twilio when sent.
       expect(Object.keys(t.types)).toEqual(["twilio/text"]);
       const body = t.types["twilio/text"]!.body;
       expect(body).toContain("{{1}}"); // item
-      expect(body).toContain("{{2}}"); // order number
-      expect(body).toContain("{{3}}"); // pickup place
-      expect(body).not.toContain("{{0}}");
-      expect(Object.keys(t.variables)).toEqual(["1", "2", "3"]);
+      expect(body).not.toMatch(/\{\{[02-9]\}\}/);
+      expect(Object.keys(t.variables)).toEqual(["1"]);
     },
   );
 
-  test("English asks for the order number or the name and wishes an enjoyable drink", () => {
+  test("English says the order is ready and will be served shortly", () => {
     const body = getOrderReadyTemplate("t", "en").types["twilio/text"]!.body;
-    expect(body).toContain("order number *{{2}}* or your name");
-    expect(body).toContain("Enjoy your drink!");
+    expect(body).toBe("Your {{1}} is ready ☕\n\nWill be served to you shortly.");
   });
 });
 

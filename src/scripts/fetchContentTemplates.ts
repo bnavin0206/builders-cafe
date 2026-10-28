@@ -85,8 +85,6 @@ async function getTemplate(templateName: string) {
 
 export async function getOrderReadyMessage(
   product: string,
-  orderNumber: string,
-  orderPickupLocation: string,
   language: Language = "en",
 ) {
   const suffix = LANG_SUFFIX[language];
@@ -94,32 +92,8 @@ export async function getOrderReadyMessage(
 
   return {
     contentSid: template.sid,
-    // The templates number their variables from 1.
-    contentVariables: buildContentVariables(
-      [product, orderNumber, orderPickupLocation],
-      1,
-    ),
-  };
-}
-
-export async function getOrderReadyReminderMessage(
-  product: string,
-  orderNumber: string,
-  orderPickupLocation: string,
-  language: Language = "en",
-) {
-  const suffix = LANG_SUFFIX[language];
-  const template = await getTemplate(
-    `${contentPrefix}order_reminder${suffix}`,
-  );
-
-  return {
-    contentSid: template.sid,
-    // The templates number their variables from 1.
-    contentVariables: buildContentVariables(
-      [product, orderNumber, orderPickupLocation],
-      1,
-    ),
+    // The template has one variable, {{1}}: the item as ordered.
+    contentVariables: buildContentVariables([product], 1),
   };
 }
 

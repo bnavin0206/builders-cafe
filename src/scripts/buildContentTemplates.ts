@@ -371,10 +371,10 @@ export function getOrderReadyTemplate(
   language: Language = "en",
 ): WhatsAppTemplateConfig {
   const textBody = language === "pt-BR"
-    ? "Seu {{1}} está pronto ☕\n\nApresente o número do pedido *{{2}}* ou seu nome no {{3}}. Aproveite sua bebida!"
+    ? "Seu {{1}} está pronto ☕\n\nSerá servido a você em instantes."
     : language === "fr"
-      ? "Votre {{1}} est prêt ☕\n\nPrésentez le numéro de commande *{{2}}* ou votre nom au {{3}}. Profitez de votre boisson\u00A0!"
-      : "Your {{1}} is ready ☕\n\nPlease show order number *{{2}}* or your name at the {{3}}. Enjoy your drink!";
+      ? "Votre {{1}} est prêt ☕\n\nIl vous sera servi dans un instant."
+      : "Your {{1}} is ready ☕\n\nWill be served to you shortly.";
 
   // Plain text only. Twilio rejects every send of a card template that has no
   // buttons ("Content Variables parameter is invalid", error 21656), with
@@ -385,8 +385,6 @@ export function getOrderReadyTemplate(
     // Numbered from 1, as Twilio's content docs describe.
     variables: {
       "1": "order item",
-      "2": "order number",
-      "3": "order pickup location",
     },
     types: {
       "twilio/text": {
@@ -431,32 +429,6 @@ export function getCafeListTemplate(
       },
       "twilio/text": {
         body: "{{1}}",
-      },
-    },
-  };
-}
-
-export function getOrderReminderTemplate(
-  templateName: string,
-  language: Language = "en",
-): WhatsAppTemplateConfig {
-  const body = language === "pt-BR"
-    ? "Ei! Não esqueça seu {{1}}. Você pode pular a fila e retirá-lo em {{3}}. \n\nPeça pelo número do pedido #{{2}} ao retirar."
-    : language === "fr"
-      ? "Coucou\u00A0! N'oubliez pas votre {{1}}. Vous pouvez éviter la file d'attente et le récupérer au {{3}}. \n\nDemandez le numéro de commande #{{2}} lors du retrait."
-      : "Heya! Don't forget your {{1}}. You can skip the queue and collect it at {{3}}. \n\nAsk for order number #{{2}} when you pick it up.";
-
-  return {
-    friendly_name: templateName,
-    language: langCode(language),
-    variables: {
-      "1": "order item",
-      "2": "order number",
-      "3": "order pickup location",
-    },
-    types: {
-      "twilio/text": {
-        body,
       },
     },
   };

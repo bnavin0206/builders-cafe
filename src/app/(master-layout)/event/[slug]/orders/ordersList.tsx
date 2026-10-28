@@ -12,10 +12,9 @@ import { useToast } from "@/components/ui/use-toast";
 
 import type { Event } from "@/types";
 
-import { Check, BellRing, UserCheck } from "lucide-react";
+import { Check, UserCheck } from "lucide-react";
 import {
   getOrderReadyMessage,
-  getOrderReadyReminderMessage,
 } from "@/scripts/fetchContentTemplates";
 
 export default function OrdersList({
@@ -184,34 +183,6 @@ export default function OrdersList({
           {/* Status + actions */}
           {isPriviledged && (
             <div className="flex items-center gap-2 flex-shrink-0">
-              {isReady && !data?.manual && (
-                <button
-                  aria-label="Send reminder"
-                  disabled={
-                    isProcessing(index, "remind") ||
-                    (Date.now() - dateUpdated < 3 * 60 * 1000 && data?.reminded)
-                  }
-                  className="w-10 h-10 rounded-lg border border-amber-300 bg-amber-50 text-amber-600 hover:bg-amber-100 disabled:opacity-40 flex items-center justify-center transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-amber-500 focus-visible:outline-none"
-                  onClick={async () => {
-                    startProcessing(index, "remind");
-                    try {
-                      const [message, from] = await Promise.all([
-                        getOrderReadyReminderMessage(
-                          data.item, index, event.pickupLocation, event.language,
-                        ),
-                        pinnedFrom(data.key),
-                      ]);
-                      sendMessage(toAddress(data), "", message.contentSid, message.contentVariables, from);
-                      updateOrder(index, { reminded: true });
-                      toast({ title: "Customer Reminded", description: "Reminder sent." });
-                    } finally {
-                      stopProcessing(index, "remind");
-                    }
-                  }}
-                >
-                  <BellRing aria-hidden="true" className="h-4 w-4" />
-                </button>
-              )}
               {isQueued && (
                 <button
                   aria-label="Mark order ready"
@@ -223,9 +194,7 @@ export default function OrdersList({
                       updateOrder(index, { status: "ready" });
                       if (!data?.manual) {
                         const [message, from] = await Promise.all([
-                          getOrderReadyMessage(
-                            data.item, index, event.pickupLocation, event.language,
-                          ),
+                          getOrderReadyMessage(data.item, event.language),
                           pinnedFrom(data.key),
                         ]);
                         sendMessage(toAddress(data), "", message.contentSid, message.contentVariables, from);
