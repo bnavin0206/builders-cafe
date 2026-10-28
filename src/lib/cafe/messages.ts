@@ -14,20 +14,25 @@ export const msg = {
   quizPassed:
     "All correct! Your coffee is free. Choose it by replying with its number.",
   quizFailedPaid:
-    "Sorry, that was not enough for a free coffee. You can still order from our paid menu. Reply with a number.",
+    "Sorry, that was not enough for a free coffee. You can still order from our paid menu. Reply with the numbers of the items you want, like 1 or 1,3.",
   quizFailedEnd:
     "Sorry, that was not enough for a free coffee. Thanks for playing!",
   alreadyTookQuiz:
-    "You have already taken part in the quiz, so you can order from our paid menu. Reply with a number.",
+    "You have already taken part in the quiz, so you can order from our paid menu. Reply with the numbers of the items you want, like 1 or 1,3.",
   freeUsed:
-    "You have already had your free coffee. You can still order from our paid menu. Reply with a number.",
+    "You have already had your free coffee. You can still order from our paid menu. Reply with the numbers of the items you want, like 1 or 1,3.",
   blocked:
     "Sorry, we found that you have already taken part, so you can't take part again. Thank you!",
   coffeePrompt: "Choose your coffee by replying with its number:",
   addOnsPrompt: (coffee: string) =>
     `Add-ons for your ${coffee}? Reply with one or more numbers, like 1 or 1,3. Reply 0 for none:`,
   addOnsInvalid: "Please reply with the numbers of the add-ons you want, or 0 for none.",
-  extraPrompt: "Want something extra? These are paid. Reply with a number, or 0 for none:",
+  extraPrompt:
+    "Want something extra? These are paid. Reply with one or more numbers, like 1 or 1,3. Reply 0 for none:",
+  pickAtLeastOne: "Please pick at least one item from the menu.",
+  tooManyItems: (max: number) => `You can order up to ${max} items at a time.`,
+  itemAdded: (name: string, so_far: string) =>
+    `Added ${name}. So far: ${so_far}. Reply with more numbers, or 0 when you are done:`,
   notOnMenu: "Sorry, that is not on the menu. Please reply with a number.",
   noItems: "Sorry, nothing is available to order right now.",
   idle: "Reply MENU to order again.",
@@ -55,11 +60,11 @@ export const msg = {
 export const listMsg = {
   quizPassed: "All correct! Your coffee is free. Tap Choose to pick it.",
   quizFailedPaid:
-    "Sorry, that was not enough for a free coffee. You can still order from our paid menu. Tap Choose to pick an item.",
+    "Sorry, that was not enough for a free coffee. You can still order from our paid menu. Tap Choose and pick items one at a time, then tap Done.",
   alreadyTookQuiz:
-    "You have already taken part in the quiz, so you can order from our paid menu. Tap Choose to pick an item.",
+    "You have already taken part in the quiz, so you can order from our paid menu. Tap Choose and pick items one at a time, then tap Done.",
   freeUsed:
-    "You have already had your free coffee. You can still order from our paid menu. Tap Choose to pick an item.",
+    "You have already had your free coffee. You can still order from our paid menu. Tap Choose and pick items one at a time, then tap Done.",
   coffeePrompt: "Choose your coffee from the list:",
   notOnMenu: "Sorry, that is not on the menu. Tap Choose to pick an item.",
   addOnsPrompt: (coffee: string) =>
@@ -67,5 +72,9 @@ export const listMsg = {
   addOnAdded: (name: string) =>
     `Added ${name}. Anything else? Pick another, or tap Done.`,
   addOnsInvalid: "Please pick an add-on from the list, or tap Done.",
-  extraPrompt: "Want something extra? These are paid. Tap Choose, or pick No thanks.",
+  extraPrompt:
+    "Want something extra? These are paid. Pick items one at a time, then tap Done, or pick No thanks.",
+  pickAtLeastOne: "Please pick at least one item from the list.",
+  itemAdded: (name: string, so_far: string) =>
+    `Added ${name}. So far: ${so_far}. Pick another, or tap Done.`,
 };

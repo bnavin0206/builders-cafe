@@ -44,3 +44,30 @@ export function parseItem(reply: string, items: MenuItem[]): MenuItem | null {
     null
   );
 }
+
+/**
+ * Like parseItem, but a reply may name several items by number, such as
+ * "1,3" or "2 2 3" (a repeated number is a quantity). Null if any part is
+ * not valid.
+ */
+export function parseItems(reply: string, items: MenuItem[]): MenuItem[] | null {
+  const single = parseItem(reply, items);
+  if (single) return [single];
+  const parts = reply.split(/[\s,]+/).filter(Boolean);
+  if (parts.length < 2) return null;
+  const picked: MenuItem[] = [];
+  for (const p of parts) {
+    if (!/^\d+$/.test(p)) return null;
+    const item = items[Number(p) - 1];
+    if (!item) return null;
+    picked.push(item);
+  }
+  return picked;
+}
+
+/** ["Cold Brew", "Veg Puff", "Cold Brew"] into "Cold Brew ×2, Veg Puff". */
+export function summarizeItems(titles: string[]): string {
+  const counts = new Map<string, number>();
+  for (const t of titles) counts.set(t, (counts.get(t) ?? 0) + 1);
+  return [...counts].map(([t, n]) => (n > 1 ? `${t} ×${n}` : t)).join(", ");
+}

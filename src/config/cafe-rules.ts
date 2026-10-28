@@ -17,8 +17,9 @@ export const cafeRules = {
   // CLIENT: one free coffee per attendee for the whole event; paid orders have
   // no limit. Enforced through the free coffee being used once.
   freeCoffeesPerEvent: 1,
-  // DEFAULT: after the coffee and add-ons, at most one extra paid item.
-  maxExtraItems: 1,
+  // DEFAULT: at most this many items in one order (the free coffee counts as
+  // one). Paid menus let attendees pick several items, repeats allowed.
+  maxItemsPerOrder: 10,
   // CLIENT: no email verification code. We just ask for name, email, company
   // and city in the chat. Set to true to bring back the emailed code (needs
   // the Twilio Verify and SendGrid setup).

@@ -142,12 +142,11 @@ class Sim {
   /** Simulates Razorpay confirming the pending payment. */
   async pay(paymentId = "pay_1") {
     const p = this.record.pendingOrder!;
-    const coffee = this.evt.selection.items.find((i) => i.title === p.coffee)!;
-    const extra = p.extra ? this.evt.selection.items.find((i) => i.title === p.extra) : undefined;
+    const find = (t: string) => this.evt.selection.items.find((i) => i.title === t)!;
     return placeOrder({ event: this.evt, phone: PHONE, record: this.record }, this.deps, {
-      coffee,
+      coffee: p.coffee ? find(p.coffee) : undefined,
       addOns: p.addOns,
-      extra,
+      items: (p.items ?? []).map(find),
       amountPaise: p.amountPaise,
       paymentId,
     });
@@ -355,7 +354,7 @@ describe("free coffee with add-ons", () => {
 
   test("the extra step is skipped when no extras are allowed", async () => {
     const s = new Sim();
-    s.rules = { ...cafeRules, maxExtraItems: 0 };
+    s.rules = { ...cafeRules, maxItemsPerOrder: 1 };
     await s.passQuiz();
     await s.say("1");
     await s.say("0");
@@ -375,7 +374,7 @@ describe("paid options", () => {
     expect(s.links[0]).toMatchObject({ amountPaise: 6000, phone: PHONE, name: "Asha", email: "asha@example.com" });
     expect(s.links[0]!.expiresAt.toISOString()).toBe("2026-11-12T10:02:00.000Z");
     expect(s.record.stage).toBe(Stages.AWAITING_PAYMENT);
-    expect(s.record.pendingOrder).toMatchObject({ coffee: "Americano", extra: "Veg Puff", amountPaise: 6000, linkId: "plink_1" });
+    expect(s.record.pendingOrder).toMatchObject({ coffee: "Americano", items: ["Veg Puff"], amountPaise: 6000, linkId: "plink_1" });
     expect(s.last).toContain("https://rzp.io/i/test1");
     expect(s.last).toContain("2 minutes");
     expect(s.sent.some((m) => m.includes("Total: ₹60"))).toBe(true);
@@ -413,23 +412,31 @@ describe("paid options", () => {
     expect(s.record.freeCoffeesTaken).toBeUndefined();
   });
 
-  test("a non-winner picks a priced drink, add-ons and a priced snack", async () => {
+  test("a non-winner's paid menu lists every priced item, drinks and snacks", async () => {
+    const s = new Sim();
+    await s.failQuiz();
+    expect(s.record.stage).toBe(Stages.PICK_COFFEE);
+    expect(s.last).toContain("1. Cold Brew (₹120)");
+    expect(s.last).toContain("2. Veg Puff (₹60)");
+    expect(s.last).toContain("3. Cheese Croissant (₹90)");
+    expect(s.last).not.toContain("Americano");
+  });
+
+  test("a non-winner picks a drink and add-ons, then pays", async () => {
     const s = new Sim();
     await s.failQuiz();
     await s.say("1"); // Cold Brew
+    expect(s.record.stage).toBe(Stages.PICK_ADDONS);
     await s.say("1"); // No sugar
-    expect(s.last).toContain("1. Veg Puff (₹60)");
-    expect(s.last).not.toContain("Cold Brew");
-    await s.say("2"); // Cheese Croissant
-    expect(s.links[0]!.amountPaise).toBe(21000);
-    expect(s.record.pendingOrder).toMatchObject({ coffee: "Cold Brew", addOns: ["No sugar"], extra: "Cheese Croissant" });
+    expect(s.links[0]!.amountPaise).toBe(12000);
+    expect(s.record.pendingOrder).toMatchObject({ items: ["Cold Brew"], addOns: ["No sugar"] });
+    expect(s.record.pendingOrder!.coffee).toBeUndefined();
   });
 
-  test("a non-winner with no extra pays for the drink only", async () => {
+  test("a non-winner with no add-ons pays for the drink only", async () => {
     const s = new Sim();
     await s.failQuiz();
     await s.say("1");
-    await s.say("0");
     await s.say("0");
     expect(s.links[0]!.amountPaise).toBe(12000);
   });
@@ -440,11 +447,110 @@ describe("paid options", () => {
     await s.failQuiz();
     await s.say("1");
     await s.say("0");
-    await s.say("0");
     expect(s.orders).toHaveLength(0);
     expect(s.record.stage).toBe(Stages.VERIFIED_USER);
     expect(s.record.pendingOrder).toBeUndefined();
+    expect(s.record.cartItems).toBeUndefined();
     expect(s.last).toContain("could not create your payment link");
+  });
+});
+
+describe("several items on the paid menus", () => {
+  test("several numbers in one reply: drinks and snacks together", async () => {
+    const s = new Sim();
+    await s.failQuiz();
+    await s.say("1, 2, 3");
+    expect(s.record.stage).toBe(Stages.PICK_ADDONS); // a drink is in the order
+    await s.say("0");
+    expect(s.links[0]!.amountPaise).toBe(27000); // 120 + 60 + 90
+    expect(s.record.pendingOrder!.items).toEqual(["Cold Brew", "Veg Puff", "Cheese Croissant"]);
+    expect(s.sent.some((m) => m.includes("Total: ₹270"))).toBe(true);
+  });
+
+  test("a repeated number is a quantity", async () => {
+    const s = new Sim();
+    await s.failQuiz();
+    await s.say("1 1");
+    await s.say("0");
+    expect(s.links[0]!.amountPaise).toBe(24000);
+    expect(s.record.pendingOrder!.items).toEqual(["Cold Brew", "Cold Brew"]);
+    expect(s.sent.some((m) => m.includes("2 × Cold Brew (₹240)"))).toBe(true);
+    expect(s.links[0]!.description).toBe("Cold Brew ×2");
+  });
+
+  test("a snacks-only order skips the add-ons", async () => {
+    const s = new Sim();
+    await s.failQuiz();
+    await s.say("2, 3");
+    expect(s.record.stage).toBe(Stages.AWAITING_PAYMENT);
+    expect(s.links[0]!.amountPaise).toBe(15000);
+    expect(s.sent.some((m) => m.startsWith("Add-ons for"))).toBe(false);
+  });
+
+  test("a paid order needs at least one item", async () => {
+    const s = new Sim();
+    await s.failQuiz();
+    await s.say("0");
+    expect(s.record.stage).toBe(Stages.PICK_COFFEE);
+    expect(s.last).toContain("Please pick at least one item");
+    expect(s.links).toHaveLength(0);
+  });
+
+  test("an invalid number in a list of numbers repeats the menu", async () => {
+    const s = new Sim();
+    await s.failQuiz();
+    await s.say("1, 9");
+    expect(s.record.stage).toBe(Stages.PICK_COFFEE);
+    expect(s.last).toContain("not on the menu");
+  });
+
+  test("the order size is capped", async () => {
+    const s = new Sim();
+    s.rules = { ...cafeRules, maxItemsPerOrder: 3 };
+    await s.failQuiz();
+    await s.say("1 1 1 1");
+    expect(s.sent.some((m) => m.includes("up to 3 items"))).toBe(true);
+    expect(s.record.stage).toBe(Stages.PICK_COFFEE);
+    expect(s.links).toHaveLength(0);
+    await s.say("1 1 1");
+    await s.say("0");
+    expect(s.links[0]!.amountPaise).toBe(36000);
+  });
+
+  test("a winner can add several paid extras to the free coffee", async () => {
+    const s = new Sim();
+    await s.passQuiz();
+    await s.say("1"); // Americano, free
+    await s.say("0"); // no add-ons
+    await s.say("2, 3"); // Veg Puff and Cheese Croissant
+    expect(s.links[0]!.amountPaise).toBe(15000);
+    expect(s.record.pendingOrder).toMatchObject({
+      coffee: "Americano",
+      items: ["Veg Puff", "Cheese Croissant"],
+    });
+    await s.pay();
+    expect(s.orders[0]).toMatchObject({
+      item: "Americano",
+      extras: "Veg Puff, Cheese Croissant",
+      amountPaise: 15000,
+    });
+    expect(s.record.freeCoffeesTaken).toBe(1);
+  });
+
+  test("a paid-only order is queued as its items and leaves the free coffee alone", async () => {
+    const s = new Sim();
+    await s.failQuiz();
+    await s.say("1 1 2");
+    await s.say("1");
+    await s.pay();
+    expect(s.orders[0]).toMatchObject({
+      item: "Cold Brew ×2, Veg Puff",
+      modifiers: "No sugar",
+      amountPaise: 30000,
+      name: "Asha",
+    });
+    expect(s.orders[0]!.extras).toBeUndefined();
+    expect(s.record.freeCoffeesTaken).toBeUndefined();
   });
 });
 
@@ -453,7 +559,6 @@ describe("waiting for payment", () => {
     const s = new Sim();
     await s.failQuiz();
     await s.say("1");
-    await s.say("0");
     await s.say("0");
     return s;
   }
@@ -777,9 +882,70 @@ describe("list picker", () => {
     await s.say("2"); // Latte
     await s.say("0"); // no add-ons
     await s.say("2"); // Veg Puff
+    expect(s.record.stage).toBe(Stages.PICK_EXTRA); // a list: tap more or Done
+    await s.say("0"); // Done
     expect(s.links).toHaveLength(1);
     expect(s.links[0]!.amountPaise).toBe(6000);
     expect(s.record.stage).toBe(Stages.AWAITING_PAYMENT);
+  });
+
+  test("the paid menu is a list with no Done row until something is picked", async () => {
+    const s = new Sim();
+    s.enableLists();
+    await s.failQuiz();
+    expect(s.lastList!.rows.map((r) => r.title)).toEqual(["Cold Brew", "Veg Puff", "Cheese Croissant"]);
+    expect(s.lastList!.rows.some((r) => r.id === "0")).toBe(false);
+    await s.say("0");
+    expect(s.lastList!.prompt).toContain("at least one item");
+  });
+
+  test("paid items are tapped one at a time, repeats allowed, then Done", async () => {
+    const s = new Sim();
+    s.enableLists();
+    await s.failQuiz();
+    await s.say("1"); // Cold Brew
+    expect(s.record.stage).toBe(Stages.PICK_COFFEE);
+    expect(s.record.cartItems).toEqual(["Cold Brew"]);
+    expect(s.lastList!.prompt).toContain("Added Cold Brew. So far: Cold Brew.");
+    expect(s.lastList!.rows.at(-1)).toMatchObject({ id: "0", title: "Done" });
+
+    await s.say("Cold Brew"); // the same again, by name
+    expect(s.record.cartItems).toEqual(["Cold Brew", "Cold Brew"]);
+    expect(s.lastList!.prompt).toContain("So far: Cold Brew ×2.");
+
+    await s.say("2"); // Veg Puff
+    expect(s.lastList!.prompt).toContain("So far: Cold Brew ×2, Veg Puff.");
+
+    await s.say("0"); // Done: a drink is in the order, so add-ons come next
+    expect(s.record.stage).toBe(Stages.PICK_ADDONS);
+    await s.say("0"); // no add-ons
+    expect(s.links[0]!.amountPaise).toBe(30000);
+    expect(s.record.pendingOrder!.items).toEqual(["Cold Brew", "Cold Brew", "Veg Puff"]);
+  });
+
+  test("a list order stops by itself at the size limit", async () => {
+    const s = new Sim();
+    s.rules = { ...cafeRules, maxItemsPerOrder: 2 };
+    s.enableLists();
+    await s.failQuiz();
+    await s.say("2");
+    await s.say("2"); // second item reaches the limit
+    expect(s.record.stage).toBe(Stages.AWAITING_PAYMENT);
+    expect(s.links[0]!.amountPaise).toBe(12000);
+  });
+
+  test("the winner's extras: No thanks first, then Done after the first pick", async () => {
+    const s = new Sim();
+    s.enableLists();
+    await s.passQuiz();
+    await s.say("1");
+    await s.say("0");
+    expect(s.lastList!.rows.at(-1)).toMatchObject({ id: "0", title: "No thanks" });
+    await s.say("3"); // Cheese Croissant
+    expect(s.lastList!.rows.at(-1)).toMatchObject({ id: "0", title: "Done" });
+    await s.say("2"); // Veg Puff
+    await s.say("0");
+    expect(s.links[0]!.amountPaise).toBe(15000);
   });
 
   test("a wrong reply shows the list again", async () => {

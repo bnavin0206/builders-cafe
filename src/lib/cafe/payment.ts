@@ -60,23 +60,28 @@ export async function confirmPayment(
     return "amount-mismatch";
   }
 
-  const coffee = event.selection.items.find((i) => i.title === pending.coffee);
-  const extra = pending.extra
-    ? event.selection.items.find((i) => i.title === pending.extra)
-    : undefined;
-  if (!coffee) {
+  const find = (title: string) => event.selection.items.find((i) => i.title === title);
+  const coffee = pending.coffee ? find(pending.coffee) : undefined;
+  const titles = pending.items ?? (pending.extra ? [pending.extra] : []);
+  const items = titles.map(find);
+  if (
+    (pending.coffee && !coffee) ||
+    items.some((i) => !i) ||
+    (!coffee && items.length === 0)
+  ) {
     console.error("Pending order item is no longer on the menu", pending);
     deps.send(msg.paymentOrphan(paid.paymentId));
     return "orphan";
   }
+  const paidItems = items as NonNullable<(typeof items)[number]>[];
 
   const n = await placeOrder({ event, phone: paid.phone, record }, deps, {
     coffee,
     addOns: pending.addOns,
-    extra,
+    items: paidItems,
     amountPaise: paid.amountPaise,
     paymentId: paid.paymentId,
   });
-  deps.send(msg.paymentReceived(n, orderSummary(coffee, pending.addOns, extra)));
+  deps.send(msg.paymentReceived(n, orderSummary(coffee, pending.addOns, paidItems)));
   return "placed";
 }

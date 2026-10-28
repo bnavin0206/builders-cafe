@@ -194,7 +194,10 @@ export default function OrdersList({
                       updateOrder(index, { status: "ready" });
                       if (!data?.manual) {
                         const [message, from] = await Promise.all([
-                          getOrderReadyMessage(data.item, event.language),
+                          getOrderReadyMessage(
+                            [data.item, data.extras].filter(Boolean).join(" + "),
+                            event.language,
+                          ),
                           pinnedFrom(data.key),
                         ]);
                         sendMessage(toAddress(data), "", message.contentSid, message.contentVariables, from);

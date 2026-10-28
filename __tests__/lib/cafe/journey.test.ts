@@ -307,8 +307,58 @@ describe("full attendee journey through the webhooks", () => {
     expect(p.last).not.toContain("Americano");
     await p.say("1");
     await p.say("0");
-    await p.say("0");
     expect(world.links[0]).toMatchObject({ amountPaise: 12000 });
+  });
+
+  test("a wrong answer: several items, quantity, add-on, then pay", async () => {
+    const p = new Phone("+919800000009");
+    await p.signUp();
+    for (let i = 0; i < 3; i++) {
+      const id = p.record.quizQuestions[p.record.quizIndex];
+      const q = quizBank.find((x) => x.id === id)!;
+      await p.say(String(((q.correct + 1) % q.options.length) + 1));
+    }
+    await p.say("1, 1, 2"); // two Cold Brew and a Veg Puff
+    expect(p.last).toContain("Add-ons for your drinks");
+    await p.say("1"); // No sugar
+    expect(world.links[0]).toMatchObject({ amountPaise: 30000, description: "Cold Brew ×2, Veg Puff (No sugar)" });
+    expect(p.last).toContain("https://rzp.io/i/1");
+    expect(world.lists.get("builders-cafe") ?? []).toHaveLength(0);
+
+    const res = await payWebhook("plink_1", "+919800000009", "pay_5", 30000);
+    expect(res.status).toBe(200);
+    expect(world.lists.get("builders-cafe")).toEqual([
+      expect.objectContaining({
+        item: "Cold Brew ×2, Veg Puff",
+        modifiers: "No sugar",
+        amountPaise: 30000,
+        paymentId: "pay_5",
+        name: "Asha Rao",
+        status: "queued",
+      }),
+    ]);
+    expect(p.last).toBe(
+      "Payment received. Order #1 confirmed: Cold Brew ×2, Veg Puff (No sugar). We'll message you when it's ready.",
+    );
+    expect(p.record.freeCoffeesTaken).toBeUndefined();
+  });
+
+  test("with list pickers: paid items one at a time, then Done", async () => {
+    world.listsEnabled = true;
+    const p = new Phone("+919800000010");
+    await p.signUp();
+    for (let i = 0; i < 3; i++) {
+      const id = p.record.quizQuestions[p.record.quizIndex];
+      const q = quizBank.find((x) => x.id === id)!;
+      await p.say(String(((q.correct + 1) % q.options.length) + 1));
+    }
+    expect(p.lists.at(-1)!.rows.map((r) => r.title)).toEqual(["Cold Brew", "Veg Puff", "Cheese Croissant"]);
+    await p.say("2"); // Veg Puff
+    expect(p.lists.at(-1)!.prompt).toContain("So far: Veg Puff");
+    await p.say("3"); // Cheese Croissant
+    await p.say("0"); // Done: snacks only, so no add-ons
+    expect(world.links[0]).toMatchObject({ amountPaise: 15000 });
+    expect(p.record.stage).toBe("AWAITING_PAYMENT");
   });
 
   test("with list pickers: coffee, add-ons one at a time, extra, then the order is queued", async () => {

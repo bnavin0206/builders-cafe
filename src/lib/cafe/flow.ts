@@ -15,7 +15,10 @@ import {
   formatTotal,
   isFree,
   itemsIn,
+  priceOf,
   parseItem,
+  parseItems,
+  summarizeItems,
   totalPaise,
 } from "./pricing";
 import {
@@ -325,16 +328,18 @@ async function failQuiz(
 }
 
 /** Free mode: free coffees only. Paid mode: priced coffees only. */
-function coffeeChoices(event: Event, mode: "free" | "paid"): MenuItem[] {
-  const all = itemsIn(event.selection.items, "coffee");
-  return all.filter((i) => (mode === "free" ? isFree(i) : !isFree(i)));
+/** The free menu is the free coffees; the paid menu is every priced item. */
+function menuChoices(event: Event, mode: "free" | "paid"): MenuItem[] {
+  if (mode === "paid") return event.selection.items.filter((i) => !isFree(i));
+  return itemsIn(event.selection.items, "coffee").filter(isFree);
 }
 
-/** Paid items other than the coffee already chosen, drinks and snacks. */
-function extraChoices(event: Event, coffeeTitle: string | undefined): MenuItem[] {
-  return event.selection.items.filter(
-    (i) => !isFree(i) && i.title !== coffeeTitle,
-  );
+/** Rows for the paid-item list: every choice, plus Done once there is a cart. */
+function itemRows(choices: MenuItem[], cart: string[], kind: "paid" | "extra"): ListRow[] {
+  const rows = choices.map((i, n) => itemRow(i, n + 1));
+  if (cart.length > 0) rows.push(noneRow("Done", "Continue with your order"));
+  else if (kind === "extra") rows.push(noneRow("No thanks", "Place my order as is"));
+  return rows;
 }
 
 async function showCoffeeMenu(
@@ -343,7 +348,7 @@ async function showCoffeeMenu(
   mode: "free" | "paid",
   intro: { text: string; list: string },
 ) {
-  const items = coffeeChoices(input.event, mode);
+  const items = menuChoices(input.event, mode);
   if (items.length === 0) {
     await deps.save(input.phone, { stage: Stages.VERIFIED_USER });
     deps.send(msg.noItems);
@@ -353,15 +358,24 @@ async function showCoffeeMenu(
     stage: Stages.PICK_COFFEE,
     menuMode: mode,
     cartCoffee: undefined,
+    cartItems: undefined,
     cartAddOns: undefined,
   });
-  await offer(deps, intro, items.map((i, n) => itemRow(i, n + 1)), formatMenu(items));
+  await offer(
+    deps,
+    intro,
+    mode === "paid" ? itemRows(items, [], "paid") : items.map((i, n) => itemRow(i, n + 1)),
+    formatMenu(items),
+  );
 }
 
 async function pickCoffee(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
   const { record, phone, message, event } = input;
   const mode = record.menuMode ?? "free";
-  const items = coffeeChoices(event, mode);
+  // The paid menu is a multi-item order; the free menu is the one free coffee.
+  if (mode === "paid") return pickItems(input, deps, rules, "paid");
+
+  const items = menuChoices(event, mode);
   const chosen = parseItem(message, items);
   if (!chosen) {
     await offer(
@@ -372,12 +386,101 @@ async function pickCoffee(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
     );
     return;
   }
-  if (isFree(chosen) && !freeAvailable(record, rules)) {
+  if (!freeAvailable(record, rules)) {
     // A stale free menu answered after the free coffee was taken.
     return showCoffeeMenu(input, deps, "paid", { text: msg.freeUsed, list: listMsg.freeUsed });
   }
-  await deps.save(phone, { cartCoffee: chosen.title, cartAddOns: [] });
-  return askAddOns({ ...input, record: { ...record, cartCoffee: chosen.title } }, deps, rules);
+  await deps.save(phone, { cartCoffee: chosen.title, cartItems: [], cartAddOns: [] });
+  return askAddOns(
+    { ...input, record: { ...record, cartCoffee: chosen.title, cartItems: [], cartAddOns: [] } },
+    deps,
+    rules,
+  );
+}
+
+/**
+ * Pick paid items one reply at a time ("paid": the whole order; "extra": on top
+ * of the free coffee). In a list picker each tap adds one item and the list is
+ * shown again with Done; a typed reply may name several items at once.
+ */
+async function pickItems(
+  input: CafeInput,
+  deps: CafeDeps,
+  rules: CafeRules,
+  kind: "paid" | "extra",
+) {
+  const { event, message, phone, record } = input;
+  const choices = menuChoices(event, "paid");
+  const current = record.cartItems ?? [];
+  const room = rules.maxItemsPerOrder - (record.cartCoffee ? 1 : 0);
+  const again = (prompt: { text: string; list: string }, cart = current) =>
+    offer(deps, prompt, itemRows(choices, cart, kind), formatMenu(choices));
+
+  if (isNone(message)) {
+    if (kind === "paid" && current.length === 0) {
+      await again({ text: msg.pickAtLeastOne, list: listMsg.pickAtLeastOne });
+      return;
+    }
+    return itemsDone(input, deps, rules, kind, current);
+  }
+
+  const picks = parseItems(message, choices);
+  if (!picks) {
+    await again({ text: msg.notOnMenu, list: listMsg.notOnMenu });
+    return;
+  }
+  if (current.length + picks.length > room) {
+    deps.send(msg.tooManyItems(rules.maxItemsPerOrder));
+    await again({ text: msg.notOnMenu, list: listMsg.notOnMenu });
+    return;
+  }
+
+  const next = [...current, ...picks.map((i) => i.title)];
+  if (deps.sendList && picks.length === 1 && next.length < room) {
+    const rows = itemRows(choices, next, kind);
+    const so_far = summarizeItems(next);
+    if (
+      rows.length <= MAX_LIST_ROWS &&
+      (await deps.sendList(
+        clip(listMsg.itemAdded(picks[0]!.title, so_far), LIST_BODY_MAX),
+        rows,
+      ))
+    ) {
+      await deps.save(phone, { cartItems: next });
+      return;
+    }
+  }
+  return itemsDone(input, deps, rules, kind, next);
+}
+
+async function itemsDone(
+  input: CafeInput,
+  deps: CafeDeps,
+  rules: CafeRules,
+  kind: "paid" | "extra",
+  items: string[],
+) {
+  await deps.save(input.phone, { cartItems: items });
+  const next = { ...input, record: { ...input.record, cartItems: items } };
+  // A paid-menu order asks for add-ons now (if it has a drink); extras come
+  // after the add-ons, so the order is ready to total.
+  return kind === "paid" ? askAddOns(next, deps, rules) : finalize(next, deps, rules);
+}
+
+/** True when the order so far includes a drink that add-ons (sugar...) apply to. */
+function hasDrink(event: Event, record: AttendeeRecord): boolean {
+  const titles = [...(record.cartCoffee ? [record.cartCoffee] : []), ...(record.cartItems ?? [])];
+  return titles.some((t) => {
+    const item = findItem(event, t);
+    return item && (item.category ?? "coffee") === "coffee";
+  });
+}
+
+/** After add-ons: a paid-menu order is done; a winner may add paid extras. */
+function afterAddOns(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
+  return input.record.menuMode === "paid"
+    ? finalize(input, deps, rules)
+    : askExtra(input, deps, rules);
 }
 
 /** Add-ons still on offer (original numbers kept) plus the "Done" row. */
@@ -405,13 +508,14 @@ function addOnText(addOns: string[], chosen: string[]): string {
 async function askAddOns(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
   const { event, record, phone } = input;
   const addOns = event.selection.modifiers;
-  if (addOns.length === 0) return askExtra(input, deps, rules);
+  if (addOns.length === 0 || !hasDrink(event, record)) return afterAddOns(input, deps, rules);
   await deps.save(phone, { stage: Stages.PICK_ADDONS });
+  const forWhat = record.cartCoffee ?? "drinks";
   await offer(
     deps,
     {
-      text: msg.addOnsPrompt(record.cartCoffee!),
-      list: listMsg.addOnsPrompt(record.cartCoffee!),
+      text: msg.addOnsPrompt(forWhat),
+      list: listMsg.addOnsPrompt(forWhat),
     },
     addOnRows(addOns, []),
     addOnText(addOns, []),
@@ -469,51 +573,31 @@ async function pickAddOns(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
     }
   }
   await deps.save(phone, { cartAddOns: chosen });
-  return askExtra(
+  return afterAddOns(
     { ...input, record: { ...input.record, cartAddOns: chosen } },
     deps,
     rules,
   );
 }
 
-function extraRows(choices: MenuItem[]): ListRow[] {
-  return [
-    ...choices.map((i, n) => itemRow(i, n + 1)),
-    noneRow("No thanks", "Place my order as is"),
-  ];
-}
-
 async function askExtra(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
-  const { event, record, phone } = input;
-  const choices = extraChoices(event, record.cartCoffee);
-  if (rules.maxExtraItems < 1 || choices.length === 0) {
-    return finalize(input, deps, rules, undefined);
+  const { event, phone } = input;
+  const choices = menuChoices(event, "paid");
+  if (rules.maxItemsPerOrder <= 1 || choices.length === 0) {
+    return finalize(input, deps, rules);
   }
-  await deps.save(phone, { stage: Stages.PICK_EXTRA });
+  await deps.save(phone, { stage: Stages.PICK_EXTRA, cartItems: [] });
   await offer(
     deps,
     { text: msg.extraPrompt, list: listMsg.extraPrompt },
-    extraRows(choices),
+    itemRows(choices, [], "extra"),
     formatMenu(choices),
   );
 }
 
 async function pickExtra(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
-  const { event, record, message } = input;
-  if (!record.cartCoffee) return begin(input, deps, rules);
-  if (isNone(message)) return finalize(input, deps, rules, undefined);
-  const choices = extraChoices(event, record.cartCoffee);
-  const chosen = parseItem(message, choices);
-  if (!chosen) {
-    await offer(
-      deps,
-      { text: msg.notOnMenu, list: listMsg.notOnMenu },
-      extraRows(choices),
-      formatMenu(choices),
-    );
-    return;
-  }
-  return finalize(input, deps, rules, chosen);
+  if (!input.record.cartCoffee) return begin(input, deps, rules);
+  return pickItems(input, deps, rules, "extra");
 }
 
 function findItem(event: Event, title: string): MenuItem | undefined {
@@ -521,36 +605,57 @@ function findItem(event: Event, title: string): MenuItem | undefined {
 }
 
 export function orderSummary(
-  coffee: MenuItem,
+  coffee: MenuItem | undefined,
   addOns: string[] = [],
-  extra?: MenuItem,
+  items: MenuItem[] = [],
 ): string {
-  const base = addOns.length > 0 ? `${coffee.title} (${addOns.join(", ")})` : coffee.title;
-  return extra ? `${base} with ${extra.title}` : base;
+  const paid = summarizeItems(items.map((i) => i.title));
+  const withAddOns = (base: string) =>
+    addOns.length > 0 ? `${base} (${addOns.join(", ")})` : base;
+  if (coffee) return paid ? `${withAddOns(coffee.title)} with ${paid}` : withAddOns(coffee.title);
+  return withAddOns(paid);
 }
 
-async function finalize(
-  input: CafeInput,
-  deps: CafeDeps,
-  rules: CafeRules,
-  extra: MenuItem | undefined,
-) {
+/** One line per distinct item: "Cold Brew (₹120)" or "2 × Cold Brew (₹240)". */
+function orderLines(chosen: MenuItem[]): string[] {
+  const counts = new Map<string, { item: MenuItem; n: number }>();
+  for (const item of chosen) {
+    const entry = counts.get(item.title);
+    if (entry) entry.n += 1;
+    else counts.set(item.title, { item, n: 1 });
+  }
+  return [...counts.values()].map(({ item, n }) =>
+    n === 1
+      ? `${item.title} (${formatPrice(item)})`
+      : `${n} × ${item.title} (${isFree(item) ? "FREE" : `₹${priceOf(item) * n}`})`,
+  );
+}
+
+async function finalize(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
   const { event, phone, record } = input;
   const coffee = record.cartCoffee ? findItem(event, record.cartCoffee) : undefined;
-  if (!coffee) return begin(input, deps, rules);
+  const items = (record.cartItems ?? []).map((t) => findItem(event, t));
+  if (
+    (record.cartCoffee && !coffee) ||
+    items.some((i) => !i) ||
+    (!coffee && items.length === 0)
+  ) {
+    return begin(input, deps, rules);
+  }
+  const paidItems = items as MenuItem[];
   const addOns = record.cartAddOns ?? [];
 
-  const chosen = [coffee, ...(extra ? [extra] : [])];
+  const chosen = [...(coffee ? [coffee] : []), ...paidItems];
   const amount = totalPaise(chosen);
   const lines = [
-    ...chosen.map((i) => `${i.title} (${formatPrice(i)})`),
+    ...orderLines(chosen),
     ...(addOns.length > 0 ? [`Add-ons: ${addOns.join(", ")}`] : []),
   ];
   deps.send(msg.summary(lines, formatTotal(amount)));
 
   if (amount === 0) {
-    const n = await placeOrder(input, deps, { coffee, addOns, extra, amountPaise: 0 });
-    deps.send(msg.orderPlaced(n, orderSummary(coffee, addOns, extra)));
+    const n = await placeOrder(input, deps, { coffee, addOns, items: paidItems, amountPaise: 0 });
+    deps.send(msg.orderPlaced(n, orderSummary(coffee, addOns, paidItems)));
     return;
   }
 
@@ -564,18 +669,23 @@ async function finalize(
       name: record.fullName,
       email: record.email,
       expiresAt,
-      description: orderSummary(coffee, addOns, extra),
+      description: orderSummary(coffee, addOns, paidItems),
     });
   } catch (e) {
     console.error(e);
-    await deps.save(phone, { stage: Stages.VERIFIED_USER, cartCoffee: undefined, cartAddOns: undefined });
+    await deps.save(phone, {
+      stage: Stages.VERIFIED_USER,
+      cartCoffee: undefined,
+      cartItems: undefined,
+      cartAddOns: undefined,
+    });
     deps.send(msg.paymentError);
     return;
   }
   const pending: PendingOrder = {
-    coffee: coffee.title,
+    ...(coffee ? { coffee: coffee.title } : {}),
+    ...(paidItems.length > 0 ? { items: paidItems.map((i) => i.title) } : {}),
     ...(addOns.length > 0 ? { addOns } : {}),
-    ...(extra ? { extra: extra.title } : {}),
     amountPaise: amount,
     linkId: link.id,
     linkUrl: link.url,
@@ -585,6 +695,7 @@ async function finalize(
     stage: Stages.AWAITING_PAYMENT,
     pendingOrder: pending,
     cartCoffee: undefined,
+    cartItems: undefined,
     cartAddOns: undefined,
   });
   deps.send(msg.payPrompt(link.url, rules.paymentExpiryMinutes));
@@ -595,9 +706,11 @@ export async function placeOrder(
   input: Pick<CafeInput, "event" | "phone" | "record">,
   deps: CafeDeps,
   order: {
-    coffee: MenuItem;
+    /** The free coffee, when there is one. */
+    coffee?: MenuItem;
     addOns?: string[];
-    extra?: MenuItem;
+    /** Paid items, one entry per unit. */
+    items?: MenuItem[];
     amountPaise: number;
     paymentId?: string;
   },
@@ -605,13 +718,16 @@ export async function placeOrder(
   const { event, phone, record } = input;
   const orderCount = Number(record.orderCount ?? 0) + 1;
   const addOns = order.addOns ?? [];
+  const paid = summarizeItems((order.items ?? []).map((i) => i.title));
 
   const queued: Order = {
     key: phone,
     ...(record.fullName ? { name: record.fullName } : {}),
-    item: order.coffee.title,
+    // With a free coffee that is the item and the paid items are extras;
+    // otherwise the paid items are the order.
+    item: order.coffee ? order.coffee.title : paid,
     ...(addOns.length > 0 ? { modifiers: addOns.join(", ") } : {}),
-    ...(order.extra ? { extras: order.extra.title } : {}),
+    ...(order.coffee && paid ? { extras: paid } : {}),
     status: "queued",
     channel: "whatsapp",
     amountPaise: order.amountPaise,
@@ -623,12 +739,13 @@ export async function placeOrder(
     stage: orderCount === 1 ? Stages.FIRST_ORDER : Stages.REPEAT_CUSTOMER,
     lastOrderNumber: n,
     orderCount,
-    ...(isFree(order.coffee)
+    ...(order.coffee && isFree(order.coffee)
       ? { freeCoffeesTaken: Number(record.freeCoffeesTaken ?? 0) + 1 }
       : {}),
     ...(order.paymentId ? { lastPaymentId: order.paymentId } : {}),
     pendingOrder: undefined,
     cartCoffee: undefined,
+    cartItems: undefined,
     cartAddOns: undefined,
   });
   return n;

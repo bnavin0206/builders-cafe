@@ -18,9 +18,11 @@ replying with a number or an item name.
    gets 3 random questions from the bank in `src/config/quiz-bank.ts`
    (20 placeholders). One attempt.
 5. All correct: free coffee, then add-ons (sugar and others, from the event's
-   modifier list), then one optional paid item (drink or snack).
-   Any answer wrong: paid menu only (priced drink, add-ons, optional priced
-   snack). A failed quiz stays failed for the whole event.
+   modifier list), then optional paid items: several can be picked, one at a
+   time in the list (then Done) or as numbers in one reply ("1,3"), repeats
+   allowed. Any answer wrong: the paid menu only, where the attendee picks
+   several priced items (drinks and snacks) the same way, at least one, then
+   add-ons if the order has a drink. At most `maxItemsPerOrder` items (10).
 6. Total is added up on the server. Total 0: order is queued at once.
    Total above 0: a Razorpay payment link (valid 2 minutes) is sent in the
    chat. The order is queued only after the verified `payment_link.paid`
@@ -55,7 +57,7 @@ updated brief, to confirm at the meeting) or DEFAULT (developer choice):
 | Attempts | 1, no retry; failed stays failed for the event | CLIENT (confirm if it ever resets) |
 | After a failed quiz | can buy priced items | CLIENT |
 | Free coffees per attendee | 1 for the whole event; paid orders unlimited | CLIENT |
-| Extra paid items after the coffee | at most 1 | DEFAULT |
+| Items in one order | up to 10 (the free coffee counts as one); paid menus allow several items, repeats allowed | DEFAULT |
 | Email verification code | off, just ask for email, company and city | CLIENT |
 | Block if found in Segment | yes | CLIENT (confirm what "found" means; the email is not verified, so a different address gets past it) |
 | Mobile number check | records are keyed by the phone number, the same on WhatsApp and SMS; a number with a quiz result or attempt has taken part | CLIENT |

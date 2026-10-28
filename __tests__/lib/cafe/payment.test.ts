@@ -104,6 +104,47 @@ describe("confirmPayment", () => {
     expect(state.orders[0]).toMatchObject({ item: "Cold Brew", modifiers: "Less sugar", extras: "Cheese Croissant" });
   });
 
+  test("a paid-menu order with several items and no free coffee", async () => {
+    const { state, io } = setup({
+      pendingOrder: {
+        items: ["Cold Brew", "Cold Brew", "Cheese Croissant"],
+        addOns: ["Less sugar"],
+        amountPaise: 33000,
+        linkId: "plink_1",
+        linkUrl: "u",
+        expiresAt: "2026-11-12T10:10:00.000Z",
+      },
+    });
+    expect(await confirmPayment({ ...paid, amountPaise: 33000 }, io)).toBe("placed");
+    expect(state.orders[0]).toMatchObject({
+      item: "Cold Brew ×2, Cheese Croissant",
+      modifiers: "Less sugar",
+      amountPaise: 33000,
+    });
+    expect(state.orders[0]!.extras).toBeUndefined();
+    expect(state.record.freeCoffeesTaken).toBeUndefined();
+    expect(state.sent.at(-1)).toBe(
+      "Payment received. Order #101 confirmed: Cold Brew ×2, Cheese Croissant (Less sugar). We'll message you when it's ready.",
+    );
+  });
+
+  test("an item that left the menu after the link was sent is flagged", async () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { state, io } = setup({
+      pendingOrder: {
+        items: ["Cold Brew", "Discontinued Cake"],
+        amountPaise: 12000,
+        linkId: "plink_1",
+        linkUrl: "u",
+        expiresAt: "2026-11-12T10:10:00.000Z",
+      },
+    });
+    expect(await confirmPayment(paid, io)).toBe("orphan");
+    expect(state.orders).toHaveLength(0);
+    expect(state.sent.at(-1)).toContain("pay_1");
+    err.mockRestore();
+  });
+
   test("a retried webhook does not place a second order", async () => {
     const { state, io } = setup();
     await confirmPayment(paid, io);

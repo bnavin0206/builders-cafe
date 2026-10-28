@@ -127,8 +127,12 @@ export interface SegmentData {
 }
 
 export interface PendingOrder {
-  coffee: string;
+  /** The free coffee, when the attendee won one. */
+  coffee?: string;
+  /** Paid items, one entry per unit (a repeated title means a quantity). */
+  items?: string[];
   addOns?: string[];
+  /** Older orders: a single paid extra. Read as `items: [extra]`. */
   extra?: string;
   amountPaise: number;
   linkId: string;
@@ -167,6 +171,8 @@ export interface AttendeeRecord {
   // Free coffees taken so far, for the whole event.
   freeCoffeesTaken?: number;
   cartCoffee?: string;
+  // Paid items chosen so far, one entry per unit.
+  cartItems?: string[];
   cartAddOns?: string[];
   pendingOrder?: PendingOrder;
   lastPaymentId?: string;
