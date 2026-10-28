@@ -63,7 +63,11 @@ export async function sendMessage(
         ...(body ? { body } : {}),
         ...(contentSid ? { contentSid } : {}),
         ...(contentVariables ? { contentVariables } : {}),
-      } as any);
+      } as any).catch((err: unknown) => {
+        // The send is queued and not awaited, so a rejection would otherwise
+        // surface as an unhandled rejection.
+        console.error("Could not send message", err);
+      });
     });
     return;
   } catch (err) {

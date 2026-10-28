@@ -27,6 +27,19 @@ replying with a number or an item name.
    webhook. There is no cancel option.
 7. Barista Order Dashboard: Finish marks the order ready.
 
+### WhatsApp list pickers
+
+The coffee, add-on and extra menus are sent as WhatsApp list pickers (a button
+that opens a list; each row has the item and its price). Add-ons are picked
+one at a time, then "Done". Templates `mixologist_cafe_list_1` to `_10` (one
+per row count; created by `create-twilio-res` and at app start) carry them.
+Each row's id is the option number, so a typed number or item name works too.
+If a list cannot be sent (template missing, more than 10 rows) the flow sends
+the plain numbered text menu instead. Lists only work inside the 24-hour chat
+window and need no Meta approval. Titles are cut to 24 characters and
+descriptions to 72. The webhook logs the field names of the first list reply
+("Interactive reply fields") so they can be checked against what Twilio sends.
+
 Code: `src/lib/cafe/` (flow, quiz, pricing, payment, messages),
 `src/app/webhooks/razorpay/route.ts`, `src/lib/razorpay.ts`.
 

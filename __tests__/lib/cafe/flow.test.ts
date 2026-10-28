@@ -12,7 +12,7 @@ import {
 } from "@/lib/cafe/flow";
 import { EventState } from "@/lib/utils";
 import { modes, Stages } from "@/types";
-import type { AttendeeRecord, Event, Order } from "@/types";
+import type { AttendeeRecord, Event, ListRow, Order } from "@/types";
 
 const PHONE = "+919800000001";
 
@@ -50,6 +50,7 @@ class Sim {
   links: PaymentLinkRequest[] = [];
   cancelled: string[] = [];
   failLink = false;
+  lists: { prompt: string; rows: ListRow[] }[] = [];
   clock = new Date("2026-11-12T10:00:00Z");
   evt: Event;
   rules: any = { ...cafeRules };
@@ -87,6 +88,18 @@ class Sim {
       this.cancelled.push(id);
     },
   };
+
+  /** Lets the flow send WhatsApp list pickers; `ok` false simulates a failed send. */
+  enableLists(ok = true) {
+    this.deps.sendList = async (prompt, rows) => {
+      if (ok) this.lists.push({ prompt, rows });
+      return ok;
+    };
+  }
+
+  get lastList() {
+    return this.lists[this.lists.length - 1];
+  }
 
   private input(message: string) {
     return { message, event: this.evt, phone: PHONE, record: this.record };
@@ -648,5 +661,193 @@ describe("mobile number check", () => {
 
   test("a cleared (null) result does not count", () => {
     expect(hasTakenPart({ quizResult: null as any, quizAttempts: 0 })).toBe(false);
+  });
+});
+
+describe("list picker", () => {
+  test("a winner gets the free coffees as a list, with numbers as ids", async () => {
+    const s = new Sim();
+    s.enableLists();
+    await s.passQuiz();
+    expect(s.record.stage).toBe(Stages.PICK_COFFEE);
+    expect(s.lastList!.prompt).toContain("Your coffee is free");
+    expect(s.lastList!.rows).toEqual([
+      { id: "1", title: "Americano", description: "FREE" },
+      { id: "2", title: "Latte", description: "FREE" },
+    ]);
+    // Nothing is sent as text for the menu.
+    expect(s.last).not.toContain("1. Americano");
+  });
+
+  test("the coffee is chosen by the row id, or by its title", async () => {
+    const a = new Sim();
+    a.enableLists();
+    await a.passQuiz();
+    await a.say("2");
+    expect(a.record.cartCoffee).toBe("Latte");
+
+    const b = new Sim();
+    b.enableLists();
+    await b.passQuiz();
+    await b.say("Americano");
+    expect(b.record.cartCoffee).toBe("Americano");
+  });
+
+  test("add-ons are a list; one at a time, then Done", async () => {
+    const s = new Sim(event(["No sugar", "Less sugar", "Extra shot"]));
+    s.enableLists();
+    await s.passQuiz();
+    await s.say("1"); // Americano
+    expect(s.record.stage).toBe(Stages.PICK_ADDONS);
+    expect(s.lastList!.rows.map((r) => r.title)).toEqual([
+      "No sugar",
+      "Less sugar",
+      "Extra shot",
+      "No add-ons",
+    ]);
+
+    await s.say("3"); // Extra shot
+    expect(s.record.stage).toBe(Stages.PICK_ADDONS);
+    expect(s.record.cartAddOns).toEqual(["Extra shot"]);
+    expect(s.lastList!.prompt).toContain("Added Extra shot");
+    expect(s.lastList!.rows.map((r) => [r.id, r.title])).toEqual([
+      ["1", "No sugar"],
+      ["2", "Less sugar"],
+      ["0", "Done"],
+    ]);
+
+    await s.say("Less sugar"); // by name
+    expect(s.record.cartAddOns).toEqual(["Extra shot", "Less sugar"]);
+
+    await s.say("0"); // Done
+    expect(s.record.stage).toBe(Stages.PICK_EXTRA);
+    expect(s.record.cartAddOns).toEqual(["Extra shot", "Less sugar"]);
+  });
+
+  test("picking the last remaining add-on moves on to the extra", async () => {
+    const s = new Sim(event(["No sugar", "Less sugar"]));
+    s.enableLists();
+    await s.passQuiz();
+    await s.say("1");
+    await s.say("1");
+    await s.say("2");
+    expect(s.record.stage).toBe(Stages.PICK_EXTRA);
+    expect(s.record.cartAddOns).toEqual(["No sugar", "Less sugar"]);
+  });
+
+  test("an add-on already picked is not added twice", async () => {
+    const s = new Sim(event(["No sugar", "Less sugar", "Extra shot"]));
+    s.enableLists();
+    await s.passQuiz();
+    await s.say("1");
+    await s.say("1");
+    await s.say("1");
+    expect(s.record.cartAddOns).toEqual(["No sugar"]);
+    expect(s.record.stage).toBe(Stages.PICK_ADDONS);
+  });
+
+  test("several numbers in one reply still work and move on", async () => {
+    const s = new Sim(event(["No sugar", "Less sugar", "Extra shot"]));
+    s.enableLists();
+    await s.passQuiz();
+    await s.say("1");
+    await s.say("1 3");
+    expect(s.record.cartAddOns).toEqual(["No sugar", "Extra shot"]);
+    expect(s.record.stage).toBe(Stages.PICK_EXTRA);
+  });
+
+  test("the extra is a list ending with No thanks", async () => {
+    const s = new Sim();
+    s.enableLists();
+    await s.passQuiz();
+    await s.say("1");
+    await s.say("0");
+    expect(s.record.stage).toBe(Stages.PICK_EXTRA);
+    const rows = s.lastList!.rows;
+    expect(rows[rows.length - 1]).toEqual({ id: "0", title: "No thanks", description: "Place my order as is" });
+    expect(rows[0]).toEqual({ id: "1", title: "Cold Brew", description: "₹120" });
+    await s.say("No thanks");
+    expect(s.orders).toHaveLength(1);
+  });
+
+  test("a full paid order works through lists", async () => {
+    const s = new Sim();
+    s.enableLists();
+    await s.passQuiz();
+    await s.say("2"); // Latte
+    await s.say("0"); // no add-ons
+    await s.say("2"); // Veg Puff
+    expect(s.links).toHaveLength(1);
+    expect(s.links[0]!.amountPaise).toBe(6000);
+    expect(s.record.stage).toBe(Stages.AWAITING_PAYMENT);
+  });
+
+  test("a wrong reply shows the list again", async () => {
+    const s = new Sim();
+    s.enableLists();
+    await s.passQuiz();
+    const before = s.lists.length;
+    await s.say("banana");
+    expect(s.lists.length).toBe(before + 1);
+    expect(s.lastList!.prompt).toContain("not on the menu");
+    expect(s.record.stage).toBe(Stages.PICK_COFFEE);
+  });
+
+  test("falls back to the text menu when the list cannot be sent", async () => {
+    const s = new Sim();
+    s.enableLists(false);
+    await s.passQuiz();
+    expect(s.lists).toHaveLength(0);
+    expect(s.last).toContain("1. Americano (FREE)");
+    expect(s.last).toContain("2. Latte (FREE)");
+    await s.say("1");
+    expect(s.record.stage).toBe(Stages.PICK_ADDONS);
+    expect(s.last).toContain("1. No sugar");
+    await s.say("1");
+    expect(s.record.stage).toBe(Stages.PICK_EXTRA);
+  });
+
+  test("a menu with more than 10 rows is sent as text", async () => {
+    const big = event();
+    big.selection.items = Array.from({ length: 11 }, (_, i) => ({
+      title: `Drink ${i + 1}`,
+      shortTitle: `Drink ${i + 1}`,
+      description: "",
+      price: 0,
+      category: "coffee" as const,
+    }));
+    const s = new Sim(big);
+    s.enableLists();
+    await s.passQuiz();
+    expect(s.lists).toHaveLength(0);
+    expect(s.last).toContain("11. Drink 11 (FREE)");
+  });
+
+  test("long titles and descriptions are cut to WhatsApp's limits", async () => {
+    const e = event();
+    e.selection.items[0] = {
+      title: "Extra Large Hazelnut Caramel Cappuccino",
+      shortTitle: "XL",
+      description: "x".repeat(100),
+      price: 0,
+      category: "coffee",
+    };
+    const s = new Sim(e);
+    s.enableLists();
+    await s.passQuiz();
+    const row = s.lastList!.rows[0]!;
+    expect(row.title.length).toBeLessThanOrEqual(24);
+    expect(row.title.endsWith("…")).toBe(true);
+    expect(row.description.length).toBeLessThanOrEqual(72);
+    expect(row.id).toBe("1");
+  });
+
+  test("text mode is unchanged: a single add-on number moves straight on", async () => {
+    const s = new Sim();
+    await s.passQuiz();
+    await s.say("1");
+    await s.say("1");
+    expect(s.record.stage).toBe(Stages.PICK_EXTRA);
+    expect(s.lists).toHaveLength(0);
   });
 });

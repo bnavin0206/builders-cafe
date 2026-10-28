@@ -7,6 +7,7 @@ import {
   updateOrCreateSyncMapItem,
 } from "@/lib/twilio";
 import { cancelPaymentLink, createPaymentLink } from "@/lib/razorpay";
+import { getCafeListMessage } from "@/scripts/fetchContentTemplates";
 import { redact, EventLengthInSeconds } from "@/lib/utils";
 import type { AttendeeRecord, Event } from "@/types";
 import type { CafeDeps } from "./flow";
@@ -35,6 +36,17 @@ export function realDeps(event: Event, sender: string, from: string): CafeDeps {
     },
     send: (text) => {
       sendMessage(sender, text, undefined, undefined, from);
+    },
+    sendList: async (prompt, rows) => {
+      try {
+        const m = await getCafeListMessage(prompt, rows);
+        sendMessage(sender, "", m.contentSid, m.contentVariables, from);
+        return true;
+      } catch (e) {
+        // Most likely the list templates are not created yet: use text.
+        console.error("List picker unavailable, sending the text menu", e);
+        return false;
+      }
     },
     addOrder: async (order) =>
       addOrderToQueue(event.slug, { ...order, address: await redact(sender) }),

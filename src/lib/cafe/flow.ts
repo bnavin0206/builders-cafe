@@ -4,6 +4,7 @@ import type {
   AttendeeRecord,
   Event,
   MenuItem,
+  ListRow,
   Order,
   PendingOrder,
 } from "@/types";
@@ -24,7 +25,7 @@ import {
   pickQuestions,
   questionById,
 } from "./quiz";
-import { msg } from "./messages";
+import { listMsg, msg } from "./messages";
 
 export interface PaymentLinkRequest {
   amountPaise: number;
@@ -50,6 +51,12 @@ export interface CafeDeps {
   ): Promise<{ id: string; url: string }>;
   /** Best effort: stops an unpaid link from being paid after we gave up on it. */
   cancelPaymentLink(linkId: string): Promise<void>;
+  /**
+   * Optional: send `prompt` with `rows` as a WhatsApp list picker. Returns
+   * false when it could not be sent (for example the template does not exist
+   * yet); the flow then sends the plain text menu instead.
+   */
+  sendList?(prompt: string, rows: ListRow[]): Promise<boolean>;
 }
 
 export interface CafeInput {
@@ -61,7 +68,52 @@ export interface CafeInput {
 
 const isReset = (m: string) => /^(menu|start|order|hi|hello)$/i.test(m.trim());
 const isNone = (m: string) =>
-  ["0", "no", "none", "skip", "no thanks"].includes(m.trim().toLowerCase());
+  ["0", "no", "none", "skip", "no thanks", "done", "no add-ons", "no more"].includes(
+    m.trim().toLowerCase(),
+  );
+
+const MAX_LIST_ROWS = 10; // WhatsApp list pickers hold 1 to 10 rows
+const LIST_BODY_MAX = 1024;
+const LIST_TITLE_MAX = 24;
+const LIST_DESCRIPTION_MAX = 72;
+
+function clip(text: string, max: number): string {
+  const t = text.replace(/\s+/g, " ").trim();
+  return t.length <= max ? t : `${t.slice(0, max - 1).trimEnd()}…`;
+}
+
+/** Row id = the option number the text menu would show, so both read the same. */
+function itemRow(item: MenuItem, number: number): ListRow {
+  const detail = item.description ? ` · ${item.description}` : "";
+  return {
+    id: String(number),
+    title: clip(item.title, LIST_TITLE_MAX),
+    description: clip(`${formatPrice(item)}${detail}`, LIST_DESCRIPTION_MAX),
+  };
+}
+
+const noneRow = (title: string, description: string): ListRow => ({
+  id: "0",
+  title,
+  description,
+});
+
+/**
+ * Offer a choice: as a list picker when the deps can send one (and it fits),
+ * otherwise as the text menu. A list that fails to send also falls back to text.
+ */
+async function offer(
+  deps: CafeDeps,
+  prompt: { text: string; list: string },
+  rows: ListRow[],
+  textMenu: string,
+): Promise<void> {
+  if (deps.sendList && rows.length >= 1 && rows.length <= MAX_LIST_ROWS) {
+    const sent = await deps.sendList(clip(prompt.list, LIST_BODY_MAX), rows);
+    if (sent) return;
+  }
+  deps.send(`${prompt.text}\n\n${textMenu}`);
+}
 
 const isPicking = (stage?: string) =>
   stage === Stages.PICK_COFFEE ||
@@ -148,7 +200,7 @@ export async function enter(
     return handleCafeMessage({ ...input, message: "" }, deps, rules, bank);
   }
   if (hasTakenPart(record) && rules.rescanAfterQuizGoesToPaid) {
-    return showCoffeeMenu(input, deps, "paid", msg.alreadyTookQuiz);
+    return showCoffeeMenu(input, deps, "paid", { text: msg.alreadyTookQuiz, list: listMsg.alreadyTookQuiz });
   }
   return begin(input, deps, rules, bank);
 }
@@ -167,12 +219,12 @@ export async function begin(
   const { record, phone } = input;
 
   if (record.quizResult === "failed") {
-    return showCoffeeMenu(input, deps, "paid", msg.quizFailedPaid);
+    return showCoffeeMenu(input, deps, "paid", { text: msg.quizFailedPaid, list: listMsg.quizFailedPaid });
   }
   if (record.quizResult === "passed") {
     return freeAvailable(record, rules)
-      ? showCoffeeMenu(input, deps, "free", msg.coffeePrompt)
-      : showCoffeeMenu(input, deps, "paid", msg.freeUsed);
+      ? showCoffeeMenu(input, deps, "free", { text: msg.coffeePrompt, list: listMsg.coffeePrompt })
+      : showCoffeeMenu(input, deps, "paid", { text: msg.freeUsed, list: listMsg.freeUsed });
   }
 
   const attempts = record.quizAttempts ?? 0;
@@ -232,8 +284,8 @@ async function answerQuiz(
     await deps.save(phone, { quizCorrect: correct, quizResult: "passed" });
     const next = { ...input, record: { ...record, quizResult: "passed" as const } };
     return freeAvailable(record, rules)
-      ? showCoffeeMenu(next, deps, "free", msg.quizPassed)
-      : showCoffeeMenu(next, deps, "paid", msg.freeUsed);
+      ? showCoffeeMenu(next, deps, "free", { text: msg.quizPassed, list: listMsg.quizPassed })
+      : showCoffeeMenu(next, deps, "paid", { text: msg.freeUsed, list: listMsg.freeUsed });
   }
 
   const attempts = record.quizAttempts ?? 1;
@@ -265,7 +317,7 @@ async function failQuiz(
       { ...input, record: { ...input.record, quizResult: "failed" } },
       deps,
       "paid",
-      msg.quizFailedPaid,
+      { text: msg.quizFailedPaid, list: listMsg.quizFailedPaid },
     );
   }
   await deps.save(input.phone, { stage: Stages.QUIZ_FAILED });
@@ -289,7 +341,7 @@ async function showCoffeeMenu(
   input: CafeInput,
   deps: CafeDeps,
   mode: "free" | "paid",
-  intro: string,
+  intro: { text: string; list: string },
 ) {
   const items = coffeeChoices(input.event, mode);
   if (items.length === 0) {
@@ -303,7 +355,7 @@ async function showCoffeeMenu(
     cartCoffee: undefined,
     cartAddOns: undefined,
   });
-  deps.send(`${intro}\n\n${formatMenu(items)}`);
+  await offer(deps, intro, items.map((i, n) => itemRow(i, n + 1)), formatMenu(items));
 }
 
 async function pickCoffee(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
@@ -312,15 +364,42 @@ async function pickCoffee(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
   const items = coffeeChoices(event, mode);
   const chosen = parseItem(message, items);
   if (!chosen) {
-    deps.send(`${msg.notOnMenu}\n\n${formatMenu(items)}`);
+    await offer(
+      deps,
+      { text: msg.notOnMenu, list: listMsg.notOnMenu },
+      items.map((i, n) => itemRow(i, n + 1)),
+      formatMenu(items),
+    );
     return;
   }
   if (isFree(chosen) && !freeAvailable(record, rules)) {
     // A stale free menu answered after the free coffee was taken.
-    return showCoffeeMenu(input, deps, "paid", msg.freeUsed);
+    return showCoffeeMenu(input, deps, "paid", { text: msg.freeUsed, list: listMsg.freeUsed });
   }
   await deps.save(phone, { cartCoffee: chosen.title, cartAddOns: [] });
   return askAddOns({ ...input, record: { ...record, cartCoffee: chosen.title } }, deps, rules);
+}
+
+/** Add-ons still on offer (original numbers kept) plus the "Done" row. */
+function addOnRows(addOns: string[], chosen: string[]): ListRow[] {
+  const rows: ListRow[] = [];
+  addOns.forEach((name, i) => {
+    if (chosen.includes(name)) return;
+    rows.push({ id: String(i + 1), title: clip(name, LIST_TITLE_MAX), description: "Add-on, free" });
+  });
+  rows.push(
+    chosen.length > 0
+      ? noneRow("Done", "Continue with your order")
+      : noneRow("No add-ons", "Skip add-ons"),
+  );
+  return rows;
+}
+
+function addOnText(addOns: string[], chosen: string[]): string {
+  return addOns
+    .map((a, i) => (chosen.includes(a) ? null : `${i + 1}. ${a}`))
+    .filter(Boolean)
+    .join("\n");
 }
 
 async function askAddOns(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
@@ -328,12 +407,24 @@ async function askAddOns(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
   const addOns = event.selection.modifiers;
   if (addOns.length === 0) return askExtra(input, deps, rules);
   await deps.save(phone, { stage: Stages.PICK_ADDONS });
-  const list = addOns.map((a, i) => `${i + 1}. ${a}`).join("\n");
-  deps.send(`${msg.addOnsPrompt(record.cartCoffee!)}\n\n${list}`);
+  await offer(
+    deps,
+    {
+      text: msg.addOnsPrompt(record.cartCoffee!),
+      list: listMsg.addOnsPrompt(record.cartCoffee!),
+    },
+    addOnRows(addOns, []),
+    addOnText(addOns, []),
+  );
 }
 
 /** "1", "1,3" or "1 3" into add-on names. Null if any part is not valid. */
 function parseAddOns(reply: string, addOns: string[]): string[] | null {
+  // A tapped list row can arrive as the add-on's name.
+  const byName = addOns.find(
+    (a) => a.trim().toLowerCase() === reply.trim().toLowerCase(),
+  );
+  if (byName) return [byName];
   const parts = reply.split(/[\s,]+/).filter(Boolean);
   if (parts.length === 0) return null;
   const picked: string[] = [];
@@ -347,17 +438,35 @@ function parseAddOns(reply: string, addOns: string[]): string[] | null {
 }
 
 async function pickAddOns(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
-  const { event, message, phone } = input;
+  const { event, message, phone, record } = input;
   const addOns = event.selection.modifiers;
-  let chosen: string[] = [];
+  const already = record.cartAddOns ?? [];
+  let chosen = already;
   if (!isNone(message)) {
     const parsed = parseAddOns(message, addOns);
     if (!parsed) {
-      const list = addOns.map((a, i) => `${i + 1}. ${a}`).join("\n");
-      deps.send(`${msg.addOnsInvalid}\n\n${list}`);
+      await offer(
+        deps,
+        { text: msg.addOnsInvalid, list: listMsg.addOnsInvalid },
+        addOnRows(addOns, already),
+        addOnText(addOns, already),
+      );
       return;
     }
-    chosen = parsed;
+    chosen = [...already, ...parsed.filter((a) => !already.includes(a))];
+    // In a list picker people tap one add-on at a time: show what is left. If
+    // the list cannot be sent, behave like the text menu and move on.
+    const remaining = addOns.filter((a) => !chosen.includes(a));
+    if (deps.sendList && parsed.length === 1 && remaining.length > 0) {
+      const rows = addOnRows(addOns, chosen);
+      if (
+        rows.length <= MAX_LIST_ROWS &&
+        (await deps.sendList(clip(listMsg.addOnAdded(parsed[0]!), LIST_BODY_MAX), rows))
+      ) {
+        await deps.save(phone, { cartAddOns: chosen });
+        return;
+      }
+    }
   }
   await deps.save(phone, { cartAddOns: chosen });
   return askExtra(
@@ -367,6 +476,13 @@ async function pickAddOns(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
   );
 }
 
+function extraRows(choices: MenuItem[]): ListRow[] {
+  return [
+    ...choices.map((i, n) => itemRow(i, n + 1)),
+    noneRow("No thanks", "Place my order as is"),
+  ];
+}
+
 async function askExtra(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
   const { event, record, phone } = input;
   const choices = extraChoices(event, record.cartCoffee);
@@ -374,7 +490,12 @@ async function askExtra(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
     return finalize(input, deps, rules, undefined);
   }
   await deps.save(phone, { stage: Stages.PICK_EXTRA });
-  deps.send(`${msg.extraPrompt}\n\n${formatMenu(choices)}`);
+  await offer(
+    deps,
+    { text: msg.extraPrompt, list: listMsg.extraPrompt },
+    extraRows(choices),
+    formatMenu(choices),
+  );
 }
 
 async function pickExtra(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
@@ -384,7 +505,12 @@ async function pickExtra(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
   const choices = extraChoices(event, record.cartCoffee);
   const chosen = parseItem(message, choices);
   if (!chosen) {
-    deps.send(`${msg.notOnMenu}\n\n${formatMenu(choices)}`);
+    await offer(
+      deps,
+      { text: msg.notOnMenu, list: listMsg.notOnMenu },
+      extraRows(choices),
+      formatMenu(choices),
+    );
     return;
   }
   return finalize(input, deps, rules, chosen);

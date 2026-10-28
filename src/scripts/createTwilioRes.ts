@@ -6,6 +6,7 @@ import {
 } from "@/lib/twilio";
 import nextConfig from "../../next.config";
 import {
+  getCafeListTemplate,
   getEventRegistrationTemplate,
   getOrderCancelledTemplate,
   getOrderReadyTemplate,
@@ -75,6 +76,16 @@ async function createWhatsAppTemplates() {
   }
 
   try {
+    // 0. List pickers for the cafe flow (English only, 1 to 10 rows).
+    for (let numOptions = 1; numOptions <= MAX_ITEMS_ON_MENU; numOptions++) {
+      templateName = `${CONTENT_PREFIX}cafe_list_${numOptions}`;
+      checkIfExistsOrCreateTemplate(
+        templateName,
+        getCafeListTemplate(numOptions, templateName),
+        templates,
+      );
+    }
+
     for (const lang of LANGUAGES) {
       const suffix = LANG_SUFFIX[lang];
 

@@ -424,6 +424,46 @@ export function getOrderReadyTemplate(
   };
 }
 
+/**
+ * A WhatsApp list picker with `numOptions` rows, used by the cafe flow for the
+ * coffee, add-on and extra menus. Variables: {{0}} is the message above the
+ * list; row i uses {{3i+1}} title, {{3i+2}} id (sent back to us) and {{3i+3}}
+ * description. WhatsApp allows 1 to 10 rows. Only works inside the 24-hour
+ * session, which is where the flow runs; there is no approval step.
+ */
+export function getCafeListTemplate(
+  numOptions: number,
+  templateName: string,
+): WhatsAppTemplateConfig {
+  const variables: Record<string, string> = { "0": "Choose from the list" };
+  const items = [];
+  for (let i = 0; i < numOptions; i++) {
+    variables[String(i * 3 + 1)] = `Item ${i + 1}`;
+    variables[String(i * 3 + 2)] = String(i + 1);
+    variables[String(i * 3 + 3)] = "Description";
+    items.push({
+      item: `{{${i * 3 + 1}}}`,
+      id: `{{${i * 3 + 2}}}`,
+      description: `{{${i * 3 + 3}}}`,
+    });
+  }
+  return {
+    friendly_name: templateName,
+    language: "en",
+    variables,
+    types: {
+      "twilio/list-picker": {
+        body: "{{0}}",
+        items,
+        button: "Choose",
+      },
+      "twilio/text": {
+        body: "{{0}}",
+      },
+    },
+  };
+}
+
 export function getOrderReminderTemplate(
   templateName: string,
   language: Language = "en",

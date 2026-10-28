@@ -206,7 +206,14 @@ async function parseWebhook(request: Request): Promise<{
   const data = await request.formData();
   const sender = (data.get("From") as string) ?? "";
   const from = (data.get("To") as string) ?? "";
-  const incomingMessageBody = (data.get("Body") as string) ?? "";
+  // A tapped list-picker row arrives as its id and/or title. Prefer the id
+  // (the option number) when Twilio sends it separately.
+  const listId = (data.get("ListId") as string | null) ?? "";
+  const incomingMessageBody = listId || ((data.get("Body") as string) ?? "");
+  if (listId || [...data.keys()].some((k) => /^(list|button|interactive)/i.test(k))) {
+    // Field names only, never values: shows what Twilio sends for list replies.
+    console.log("Interactive reply fields:", [...data.keys()].join(", "));
+  }
   const numMedia = Number(data.get("NumMedia") || "0");
   const mediaUrl = (data.get("MediaUrl0") as string | null) ?? (numMedia > 0 ? data.get("MediaUrl0") as string | null : null);
 

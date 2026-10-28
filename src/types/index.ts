@@ -76,6 +76,16 @@ export interface Order {
   paymentId?: string;
 }
 
+/** One row of a WhatsApp list picker. */
+export interface ListRow {
+  /** Sent back to us when the row is tapped (not shown). */
+  id: string;
+  /** At most 24 characters. */
+  title: string;
+  /** At most 72 characters. */
+  description: string;
+}
+
 export interface Selection {
   items: MenuItem[];
   modifiers: string[];

@@ -1,4 +1,5 @@
 import {
+  getCafeListTemplate,
   getOrderReadyTemplate,
   getShowHelpTemplate,
 } from "@/scripts/buildContentTemplates";
@@ -75,5 +76,22 @@ describe("getOrderReadyTemplate", () => {
   test("the image address is built from the base URL", () => {
     const t = getOrderReadyTemplate("t", base, "en");
     expect(t.types["whatsapp/card"]!.media).toEqual([`${base}/rcs-resources/ready.png`]);
+  });
+});
+
+describe("getCafeListTemplate", () => {
+  test.each([1, 4, 10])("%i rows: ids and variables line up", (n) => {
+    const t = getCafeListTemplate(n, "t");
+    const list = t.types["twilio/list-picker"]!;
+    expect(list.items).toHaveLength(n);
+    expect(list.body).toBe("{{0}}");
+    expect(list.button.length).toBeLessThanOrEqual(20);
+    list.items.forEach((row, i) => {
+      expect(row.item).toBe(`{{${i * 3 + 1}}}`);
+      expect(row.id).toBe(`{{${i * 3 + 2}}}`);
+      expect(row.description).toBe(`{{${i * 3 + 3}}}`);
+    });
+    expect(Object.keys(t.variables)).toHaveLength(1 + n * 3);
+    expect(t.types["twilio/text"]!.body).toBe("{{0}}");
   });
 });

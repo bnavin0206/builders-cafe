@@ -1,12 +1,14 @@
 "use server";
 
-import type { modes, Event, Language } from "@/types";
+import type { modes, Event, Language, ListRow } from "@/types";
 import { getSampleOrder } from "@/lib/stringTemplates";
 
 const axios = require("axios");
 
-const { SERVICE_INSTANCE_PREFIX = "" } = process.env;
-const formattedServicePrefix = SERVICE_INSTANCE_PREFIX.toLowerCase();
+// Templates are created by createTwilioRes under CONTENT_PREFIX (from
+// next.config.ts), so they must be looked up under the same name. This used to
+// use SERVICE_INSTANCE_PREFIX, which only matched when the two were equal.
+const contentPrefix = process.env.CONTENT_PREFIX || "mixologist_";
 
 const LANG_SUFFIX: Record<Language, string> = { "en": "", "pt-BR": "_ptbr", "fr": "_fr" };
 
@@ -88,7 +90,7 @@ export async function getOrderReadyMessage(
   language: Language = "en",
 ) {
   const suffix = LANG_SUFFIX[language];
-  const template = await getTemplate(`${formattedServicePrefix}_order_ready${suffix}`);
+  const template = await getTemplate(`${contentPrefix}order_ready${suffix}`);
 
   return {
     contentSid: template.sid,
@@ -108,7 +110,7 @@ export async function getOrderReadyReminderMessage(
 ) {
   const suffix = LANG_SUFFIX[language];
   const template = await getTemplate(
-    `${formattedServicePrefix}_order_reminder${suffix}`,
+    `${contentPrefix}order_reminder${suffix}`,
   );
 
   return {
@@ -129,7 +131,7 @@ export async function getShowMenuMessage(
 ) {
   const suffix = LANG_SUFFIX[language];
   const template = await getTemplate(
-    `${formattedServicePrefix}_show_menu_${availableOptions.length}${suffix}`,
+    `${contentPrefix}show_menu_${availableOptions.length}${suffix}`,
   );
   return {
     contentSid: template.sid,
@@ -151,7 +153,7 @@ export async function getShowModifiersMessage(
 ) {
   const suffix = LANG_SUFFIX[language];
   const template = await getTemplate(
-    `${formattedServicePrefix}_show_menu_${availableModifiers.length}${suffix}`,
+    `${contentPrefix}show_menu_${availableModifiers.length}${suffix}`,
   );
   return {
     contentSid: template.sid,
@@ -179,7 +181,7 @@ export async function getReadyToOrderMessage(
   const langSuffix = LANG_SUFFIX[language];
 
   const template = await getTemplate(
-    `${formattedServicePrefix}_ready_to_order${limitess}${emailSuffix}_${availableOptions.length}${langSuffix}`,
+    `${contentPrefix}ready_to_order${limitess}${emailSuffix}_${availableOptions.length}${langSuffix}`,
   );
 
   const isLimitless = maxNumberOrders >= 50;
@@ -214,7 +216,7 @@ export async function getReadyToOrderMessage(
 export async function getEventRegistrationMessage(eventOptions: any[], language: Language = "en") {
   const suffix = LANG_SUFFIX[language];
   const template = await getTemplate(
-    `${formattedServicePrefix}_event_registration_${eventOptions.length}${suffix}`,
+    `${contentPrefix}event_registration_${eventOptions.length}${suffix}`,
   );
 
   return {
@@ -222,5 +224,27 @@ export async function getEventRegistrationMessage(eventOptions: any[], language:
     contentVariables: buildContentVariables([
       ...eventOptions.map((o) => [o.data.name, o.data.name]).flat(),
     ]),
+  };
+}
+
+const listTemplateSids = new Map<string, string>();
+
+/**
+ * The cafe flow's list picker (see getCafeListTemplate): `prompt` above the
+ * list and one row per entry, 1 to 10 rows. Throws when the template does not
+ * exist yet, so the caller can fall back to a text menu.
+ */
+export async function getCafeListMessage(prompt: string, rows: ListRow[]) {
+  const name = `${contentPrefix}cafe_list_${rows.length}`;
+  let sid = listTemplateSids.get(name);
+  if (!sid) {
+    sid = (await getTemplate(name)).sid as string;
+    listTemplateSids.set(name, sid);
+  }
+  const values: string[] = [prompt];
+  for (const row of rows) values.push(row.title, row.id, row.description);
+  return {
+    contentSid: sid,
+    contentVariables: buildContentVariables(values),
   };
 }

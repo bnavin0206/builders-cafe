@@ -14,7 +14,8 @@ vi.hoisted(() => {
 const world = vi.hoisted(() => ({
   maps: new Map<string, Map<string, any>>(),
   lists: new Map<string, any[]>(),
-  sent: [] as { to: string; body: string }[],
+  sent: [] as { to: string; body: string; contentSid?: string; contentVariables?: string }[],
+  listsEnabled: false,
   links: [] as any[],
   cancelled: [] as string[],
 }));
@@ -51,7 +52,8 @@ vi.mock("@/lib/twilio", () => {
       items.push(data);
       return { index: items.length };
     },
-    sendMessage: (to: string, body: string) => void world.sent.push({ to, body }),
+    sendMessage: (to: string, body: string, contentSid?: string, contentVariables?: string) =>
+      void world.sent.push({ to, body, contentSid, contentVariables }),
     createVerification: async () => ({ sid: "VE1" }),
     checkVerification: async (_sid: string, code: string) => ({ valid: code === "123456" }),
   };
@@ -62,6 +64,12 @@ vi.mock("@/app/webhooks/messaging/segment", () => ({
 vi.mock("@/scripts/fetchContentTemplates", () => ({
   getReadyToOrderMessage: vi.fn(),
   getEventRegistrationMessage: vi.fn(),
+  // The list templates exist only when a test turns them on; otherwise the
+  // flow falls back to the text menus.
+  getCafeListMessage: async (prompt: string, rows: unknown[]) => {
+    if (!world.listsEnabled) throw new Error("list templates are not created in this test");
+    return { contentSid: `HXlist${rows.length}`, contentVariables: JSON.stringify({ prompt, rows }) };
+  },
 }));
 vi.mock("@/lib/razorpay", async (orig) => ({
   ...(await orig<typeof import("@/lib/razorpay")>()),
@@ -127,6 +135,12 @@ class Phone {
   get last() {
     return this.inbox.at(-1) ?? "";
   }
+  /** List pickers sent to this phone: the prompt and its rows. */
+  get lists(): { prompt: string; rows: { id: string; title: string; description: string }[] }[] {
+    return world.sent
+      .filter((m) => m.to === `whatsapp:${this.number}` && m.contentSid?.startsWith("HXlist"))
+      .map((m) => JSON.parse(m.contentVariables!));
+  }
   async say(text: string) {
     const body = new URLSearchParams({ From: `whatsapp:${this.number}`, To: BOT, Body: text });
     const res = await messaging(
@@ -176,6 +190,7 @@ beforeEach(() => {
   world.maps.clear();
   world.lists.clear();
   world.sent.length = 0;
+  world.listsEnabled = false;
   world.links.length = 0;
   world.cancelled.length = 0;
   seedEvent();
@@ -294,6 +309,48 @@ describe("full attendee journey through the webhooks", () => {
     await p.say("0");
     await p.say("0");
     expect(world.links[0]).toMatchObject({ amountPaise: 12000 });
+  });
+
+  test("with list pickers: coffee, add-ons one at a time, extra, then the order is queued", async () => {
+    world.listsEnabled = true;
+    const p = new Phone("+919800000007");
+    await p.signUp();
+    await p.passQuiz();
+    expect(p.lists.at(-1)!.rows).toEqual([{ id: "1", title: "Americano", description: "FREE" }]);
+
+    await p.say("1"); // Americano, tapped by row id
+    expect(p.lists.at(-1)!.rows.map((r) => r.title)).toEqual(["No sugar", "Less sugar", "No add-ons"]);
+
+    await p.say("No sugar"); // add-on, tapped by title
+    expect(p.record.stage).toBe("PICK_ADDONS");
+    expect(p.lists.at(-1)!.rows.map((r) => r.title)).toEqual(["Less sugar", "Done"]);
+
+    await p.say("0"); // Done
+    expect(p.record.stage).toBe("PICK_EXTRA");
+    expect(p.lists.at(-1)!.rows.at(-1)).toMatchObject({ id: "0", title: "No thanks" });
+
+    await p.say("0"); // No thanks
+    expect(world.lists.get("builders-cafe")).toEqual([
+      expect.objectContaining({ item: "Americano", modifiers: "No sugar", name: "Asha Rao", status: "queued" }),
+    ]);
+    expect(p.last).toContain("Order #1 confirmed");
+  });
+
+  test("a list reply that arrives as ListId is read by its id", async () => {
+    world.listsEnabled = true;
+    const p = new Phone("+919800000008");
+    await p.signUp();
+    await p.passQuiz();
+    const body = new URLSearchParams({ From: `whatsapp:${p.number}`, To: BOT, Body: "Americano", ListId: "1" });
+    const res = await messaging(
+      new Request("http://localhost/webhooks/messaging", {
+        method: "POST",
+        body,
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+      }),
+    );
+    expect(res.status).toBeLessThan(300);
+    expect(p.record.cartCoffee).toBe("Americano");
   });
 
   test("a repeated webhook does not queue the order twice", async () => {

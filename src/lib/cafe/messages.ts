@@ -46,4 +46,26 @@ export const msg = {
     `We received your payment (${paymentId}) but could not match it to an order. Please show this message to the barista and we will sort it out.`,
   paymentError:
     "Sorry, we could not create your payment link. Please try again in a moment.",
+  addOnAdded: (name: string) =>
+    `Added ${name}. Reply with another number, or 0 when you are done:`,
+};
+
+// The same prompts worded for a WhatsApp list picker, where people tap a row
+// instead of typing a number.
+export const listMsg = {
+  quizPassed: "All correct! Your coffee is free. Tap Choose to pick it.",
+  quizFailedPaid:
+    "Sorry, that was not enough for a free coffee. You can still order from our paid menu. Tap Choose to pick an item.",
+  alreadyTookQuiz:
+    "You have already taken part in the quiz, so you can order from our paid menu. Tap Choose to pick an item.",
+  freeUsed:
+    "You have already had your free coffee. You can still order from our paid menu. Tap Choose to pick an item.",
+  coffeePrompt: "Choose your coffee from the list:",
+  notOnMenu: "Sorry, that is not on the menu. Tap Choose to pick an item.",
+  addOnsPrompt: (coffee: string) =>
+    `Add-ons for your ${coffee}? Pick one at a time, then tap Done.`,
+  addOnAdded: (name: string) =>
+    `Added ${name}. Anything else? Pick another, or tap Done.`,
+  addOnsInvalid: "Please pick an add-on from the list, or tap Done.",
+  extraPrompt: "Want something extra? These are paid. Tap Choose, or pick No thanks.",
 };
