@@ -59,17 +59,18 @@ describe("getOrderReadyTemplate", () => {
         t.types["twilio/text"]!.body,
       ];
       for (const body of bodies) {
-        expect(body).toContain("{{1}}");
-        expect(body).toContain("{{2}}");
+        expect(body).toContain("{{2}}"); // order number
+        expect(body).toContain("{{3}}"); // pickup place
+        expect(body).not.toContain("{{0}}");
       }
-      expect(t.types["twilio/text"]!.body).toContain("{{0}}");
-      expect(Object.keys(t.variables)).toEqual(["0", "1", "2"]);
+      expect(t.types["twilio/text"]!.body).toContain("{{1}}"); // item
+      expect(Object.keys(t.variables)).toEqual(["1", "2", "3"]);
     },
   );
 
   test("English asks for the order number or the name and wishes an enjoyable drink", () => {
     const body = getOrderReadyTemplate("t", base, "en").types["twilio/text"]!.body;
-    expect(body).toContain("order number *{{1}}* or your name");
+    expect(body).toContain("order number *{{2}}* or your name");
     expect(body).toContain("Enjoy your drink!");
   });
 
@@ -84,14 +85,17 @@ describe("getCafeListTemplate", () => {
     const t = getCafeListTemplate(n, "t");
     const list = t.types["twilio/list-picker"]!;
     expect(list.items).toHaveLength(n);
-    expect(list.body).toBe("{{0}}");
+    expect(list.body).toBe("{{1}}");
     expect(list.button.length).toBeLessThanOrEqual(20);
     list.items.forEach((row, i) => {
-      expect(row.item).toBe(`{{${i * 3 + 1}}}`);
-      expect(row.id).toBe(`{{${i * 3 + 2}}}`);
-      expect(row.description).toBe(`{{${i * 3 + 3}}}`);
+      expect(row.item).toBe(`{{${i * 3 + 2}}}`);
+      expect(row.id).toBe(`{{${i * 3 + 3}}}`);
+      expect(row.description).toBe(`{{${i * 3 + 4}}}`);
     });
-    expect(Object.keys(t.variables)).toHaveLength(1 + n * 3);
-    expect(t.types["twilio/text"]!.body).toBe("{{0}}");
+    // Numbered 1..(3n+1) with no gaps and no 0.
+    expect(Object.keys(t.variables).map(Number)).toEqual(
+      Array.from({ length: 1 + n * 3 }, (_, k) => k + 1),
+    );
+    expect(t.types["twilio/text"]!.body).toBe("{{1}}");
   });
 });

@@ -372,36 +372,38 @@ export function getOrderReadyTemplate(
   language: Language = "en",
 ): WhatsAppTemplateConfig {
   const cardBody = language === "pt-BR"
-    ? "Seu {{0}} está pronto ☕\nApresente o número do pedido *{{1}}* ou seu nome no {{2}}. Aproveite sua bebida!"
+    ? "Seu {{1}} está pronto ☕\nApresente o número do pedido *{{2}}* ou seu nome no {{3}}. Aproveite sua bebida!"
     : language === "fr"
-      ? "Votre {{0}} est prêt ☕\nPrésentez le numéro de commande *{{1}}* ou votre nom au {{2}}. Profitez de votre boisson\u00A0!"
-      : "Your {{0}} is ready ☕\nPlease show order number *{{1}}* or your name at the {{2}}. Enjoy your drink!";
+      ? "Votre {{1}} est prêt ☕\nPrésentez le numéro de commande *{{2}}* ou votre nom au {{3}}. Profitez de votre boisson\u00A0!"
+      : "Your {{1}} is ready ☕\nPlease show order number *{{2}}* or your name at the {{3}}. Enjoy your drink!";
 
   const cardTitle = language === "pt-BR"
-    ? "Seu {{0}} está pronto ☕\n\n"
+    ? "Seu {{1}} está pronto ☕\n\n"
     : language === "fr"
-      ? "Votre {{0}} est prêt ☕\n\n"
-      : "Your {{0}} is ready ☕\n\n";
+      ? "Votre {{1}} est prêt ☕\n\n"
+      : "Your {{1}} is ready ☕\n\n";
 
   const cardBodyShort = language === "pt-BR"
-    ? "Apresente o número do pedido *{{1}}* ou seu nome no {{2}}. Aproveite sua bebida!"
+    ? "Apresente o número do pedido *{{2}}* ou seu nome no {{3}}. Aproveite sua bebida!"
     : language === "fr"
-      ? "Présentez le numéro de commande *{{1}}* ou votre nom au {{2}}. Profitez de votre boisson\u00A0!"
-      : "Show order number *{{1}}* or your name at the {{2}}. Enjoy your drink!";
+      ? "Présentez le numéro de commande *{{2}}* ou votre nom au {{3}}. Profitez de votre boisson\u00A0!"
+      : "Show order number *{{2}}* or your name at the {{3}}. Enjoy your drink!";
 
   const textBody = language === "pt-BR"
-    ? "Seu {{0}} está pronto ☕\n\nApresente o número do pedido *{{1}}* ou seu nome no {{2}}. Aproveite sua bebida!"
+    ? "Seu {{1}} está pronto ☕\n\nApresente o número do pedido *{{2}}* ou seu nome no {{3}}. Aproveite sua bebida!"
     : language === "fr"
-      ? "Votre {{0}} est prêt ☕\n\nPrésentez le numéro de commande *{{1}}* ou votre nom au {{2}}. Profitez de votre boisson\u00A0!"
-      : "Your {{0}} is ready ☕\n\nPlease show order number *{{1}}* or your name at the {{2}}. Enjoy your drink!";
+      ? "Votre {{1}} est prêt ☕\n\nPrésentez le numéro de commande *{{2}}* ou votre nom au {{3}}. Profitez de votre boisson\u00A0!"
+      : "Your {{1}} is ready ☕\n\nPlease show order number *{{2}}* or your name at the {{3}}. Enjoy your drink!";
 
   return {
     friendly_name: templateName,
     language: langCode(language),
+    // Numbered from 1, as Twilio's content docs describe. {{0}} was rejected
+    // when sending (error 21656).
     variables: {
-      "0": "order item",
-      "1": "order number",
-      "2": "order pickup location",
+      "1": "order item",
+      "2": "order number",
+      "3": "order pickup location",
     },
     types: {
       "whatsapp/card": {
@@ -426,7 +428,7 @@ export function getOrderReadyTemplate(
 
 /**
  * A WhatsApp list picker with `numOptions` rows, used by the cafe flow for the
- * coffee, add-on and extra menus. Variables: {{0}} is the message above the
+ * coffee, add-on and extra menus. Variables: {{1}} is the message above the
  * list; row i uses {{3i+1}} title, {{3i+2}} id (sent back to us) and {{3i+3}}
  * description. WhatsApp allows 1 to 10 rows. Only works inside the 24-hour
  * session, which is where the flow runs; there is no approval step.
@@ -435,16 +437,16 @@ export function getCafeListTemplate(
   numOptions: number,
   templateName: string,
 ): WhatsAppTemplateConfig {
-  const variables: Record<string, string> = { "0": "Choose from the list" };
+  const variables: Record<string, string> = { "1": "Choose from the list" };
   const items = [];
   for (let i = 0; i < numOptions; i++) {
-    variables[String(i * 3 + 1)] = `Item ${i + 1}`;
-    variables[String(i * 3 + 2)] = String(i + 1);
-    variables[String(i * 3 + 3)] = "Description";
+    variables[String(i * 3 + 2)] = `Item ${i + 1}`;
+    variables[String(i * 3 + 3)] = String(i + 1);
+    variables[String(i * 3 + 4)] = "Description";
     items.push({
-      item: `{{${i * 3 + 1}}}`,
-      id: `{{${i * 3 + 2}}}`,
-      description: `{{${i * 3 + 3}}}`,
+      item: `{{${i * 3 + 2}}}`,
+      id: `{{${i * 3 + 3}}}`,
+      description: `{{${i * 3 + 4}}}`,
     });
   }
   return {
@@ -453,12 +455,12 @@ export function getCafeListTemplate(
     variables,
     types: {
       "twilio/list-picker": {
-        body: "{{0}}",
+        body: "{{1}}",
         items,
         button: "Choose",
       },
       "twilio/text": {
-        body: "{{0}}",
+        body: "{{1}}",
       },
     },
   };
@@ -469,18 +471,18 @@ export function getOrderReminderTemplate(
   language: Language = "en",
 ): WhatsAppTemplateConfig {
   const body = language === "pt-BR"
-    ? "Ei! Não esqueça seu {{0}}. Você pode pular a fila e retirá-lo em {{2}}. \n\nPeça pelo número do pedido #{{1}} ao retirar."
+    ? "Ei! Não esqueça seu {{1}}. Você pode pular a fila e retirá-lo em {{3}}. \n\nPeça pelo número do pedido #{{2}} ao retirar."
     : language === "fr"
-      ? "Coucou\u00A0! N'oubliez pas votre {{0}}. Vous pouvez éviter la file d'attente et le récupérer au {{2}}. \n\nDemandez le numéro de commande #{{1}} lors du retrait."
-      : "Heya! Don't forget your {{0}}. You can skip the queue and collect it at {{2}}. \n\nAsk for order number #{{1}} when you pick it up.";
+      ? "Coucou\u00A0! N'oubliez pas votre {{1}}. Vous pouvez éviter la file d'attente et le récupérer au {{3}}. \n\nDemandez le numéro de commande #{{2}} lors du retrait."
+      : "Heya! Don't forget your {{1}}. You can skip the queue and collect it at {{3}}. \n\nAsk for order number #{{2}} when you pick it up.";
 
   return {
     friendly_name: templateName,
     language: langCode(language),
     variables: {
-      "0": "order item",
-      "1": "order number",
-      "2": "order pickup location",
+      "1": "order item",
+      "2": "order number",
+      "3": "order pickup location",
     },
     types: {
       "twilio/text": {

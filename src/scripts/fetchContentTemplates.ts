@@ -94,11 +94,11 @@ export async function getOrderReadyMessage(
 
   return {
     contentSid: template.sid,
-    contentVariables: buildContentVariables([
-      product,
-      orderNumber,
-      orderPickupLocation,
-    ]),
+    // The templates number their variables from 1.
+    contentVariables: buildContentVariables(
+      [product, orderNumber, orderPickupLocation],
+      1,
+    ),
   };
 }
 
@@ -115,11 +115,11 @@ export async function getOrderReadyReminderMessage(
 
   return {
     contentSid: template.sid,
-    contentVariables: buildContentVariables([
-      product,
-      orderNumber,
-      orderPickupLocation,
-    ]),
+    // The templates number their variables from 1.
+    contentVariables: buildContentVariables(
+      [product, orderNumber, orderPickupLocation],
+      1,
+    ),
   };
 }
 
@@ -241,10 +241,11 @@ export async function getCafeListMessage(prompt: string, rows: ListRow[]) {
     sid = (await getTemplate(name)).sid as string;
     listTemplateSids.set(name, sid);
   }
+  // {{1}} is the prompt; each row adds title, id and description.
   const values: string[] = [prompt];
   for (const row of rows) values.push(row.title, row.id, row.description);
   return {
     contentSid: sid,
-    contentVariables: buildContentVariables(values),
+    contentVariables: buildContentVariables(values, 1),
   };
 }
