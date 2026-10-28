@@ -137,15 +137,27 @@ Open items that must be settled and checked before go-live:
 - [ ] Confirm the DEFAULT and CLIENT rules in `src/config/cafe-rules.ts`.
 - [ ] What "found in Segment" means (see the client document).
 - [ ] **Order display (decision pending, not built).** A full-screen page for
-  a TV, `/event/<slug>/board`, showing the order numbers that are ready (large)
-  and preparing (smaller), refreshing every few seconds. An order appears when
-  the barista clicks the check mark and leaves when it is marked served.
-  Proposed: numbers only (first names would put personal data on a public
-  screen); an open page fed by a read-only endpoint that returns only order
-  numbers, so a TV needs no login (the alternative is the kiosk login,
-  `KIOSK_LOGIN`); show Preparing as well as Ready; highlight a newly ready
-  order, with no sound because browsers block autoplay. To decide: numbers
-  only or with first name, open page or login, Preparing shown or not.
+  a TV, `/event/<slug>/board`, showing each order's number and items under
+  three statuses: Preparing (queued), Ready (marked ready with the check mark)
+  and Delivered (marked served; only the last 10 minutes or last N orders so it
+  stays short; cancelled orders are not shown). It refreshes every few seconds
+  from a new read-only feed that returns only the order number, the items and
+  the status, never names, phones or payment details. A newly ready order is
+  highlighted once; no sound, because browsers block autoplay.
+  Design samples are in `docs/order-board/` (`landscape.html` for 1920x1080,
+  `portrait.html` for 1080x1920, with preview images). Tokens look like tea
+  stall chits: red order number on a stub, dashed tear line, punched notches;
+  blue Preparing, marigold Ready (the biggest), grey Delivered. Landscape is
+  three columns; portrait is three stacked bands, Ready first.
+  To decide: (1) landscape, portrait, or one page that switches by itself
+  (recommended, works on any TV); (2) access: a link with a secret key
+  (recommended, nothing to type on the TV), a fully open page, or the kiosk
+  login (`KIOSK_LOGIN`, which expires after a day); (3) how long Delivered
+  stays; (4) add-ons on the TV or not (recommended: not); (5) changes to the
+  colours, words or layout. Also to handle when building: more orders than fit
+  on screen (show "+N more", newest first), and order numbers do not restart
+  at #1 (rebuild the order list once before the event if wanted). The TV needs
+  the app reachable, so this depends on the hosting decision.
 - [ ] **Pickup flow and the "order ready" message.** Built: each order keeps
   the attendee's sign-up name, the dashboard shows it next to the masked
   number, and the ready message now reads "Your {item} is ready. Please show

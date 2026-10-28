@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Builder's Cafe: order board (design sample)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Hanken+Grotesk:wght@500;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  /* ------------------------------------------------------------------
+     Order board for a 16:9 TV. Everything is sized in rem and the root
+     size follows the screen, so it looks the same on any 16:9 display.
+     Design size: 1920 x 1080 (1rem = 16px there).
+     ------------------------------------------------------------------ */
+  :root {
+    --shutter: #1b3fa0;   /* painted shop-shutter blue: Preparing */
+    --marigold: #ffb800;  /* temple-flower yellow: Ready */
+    --steel: #8f9aa8;     /* steel tumbler grey: Delivered */
+    --chalk: #f8f2e4;     /* token paper */
+    --chai: #2b1810;      /* strong tea brown: text */
+    --chilli: #d4251c;    /* red: numbers on tokens, the live dot */
+    --ink: #120b07;       /* header strip */
+  }
+  html { font-size: min(calc(100vw / 120), calc(100vh / 67.5)); }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    height: 100vh; overflow: hidden; background: var(--ink); color: var(--chai);
+    font-family: "Hanken Grotesk", system-ui, sans-serif; font-weight: 500;
+    display: grid; grid-template-rows: 5.25rem 1fr;
+  }
+
+  /* ---- header strip ---- */
+  .bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 2.5rem; color: var(--chalk);
+  }
+  .brand {
+    font-family: "Big Shoulders Display", Impact, sans-serif; font-weight: 900;
+    font-size: 2.75rem; letter-spacing: .06em; text-transform: uppercase; line-height: 1;
+  }
+  .brand small {
+    font-family: "JetBrains Mono", ui-monospace, monospace; font-weight: 500;
+    font-size: 1.15rem; letter-spacing: .12em; margin-left: 1.25rem; color: var(--marigold);
+  }
+  .clock {
+    font-family: "JetBrains Mono", ui-monospace, monospace; font-weight: 700;
+    font-size: 2rem; letter-spacing: .04em; display: flex; align-items: center; gap: .9rem;
+  }
+  .clock::before {
+    content: ""; width: .8rem; height: .8rem; border-radius: 50%; background: var(--chilli);
+  }
+
+  /* ---- three panels ---- */
+  .board { display: grid; grid-template-columns: 30fr 44fr 26fr; min-height: 0; }
+  .col { padding: 2rem 2.25rem 0; min-height: 0; overflow: hidden; }
+  .col--preparing { background: var(--shutter); color: var(--chalk); }
+  .col--ready { background: var(--marigold); }
+  .col--delivered { background: var(--steel); }
+
+  .col__head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    border-bottom: .3rem solid currentColor; padding-bottom: .6rem; margin-bottom: 1.6rem;
+  }
+  .col__head h2 {
+    font-family: "Big Shoulders Display", Impact, sans-serif; font-weight: 900;
+    text-transform: uppercase; letter-spacing: .05em; line-height: .95;
+    font-size: 4.25rem;
+  }
+  .col--ready .col__head h2 { font-size: 6rem; }
+  .col--delivered .col__head h2 { font-size: 3.25rem; color: var(--chai); }
+  .col__head p {
+    font-family: "JetBrains Mono", ui-monospace, monospace; font-weight: 700;
+    font-size: 1.3rem; letter-spacing: .06em; text-transform: uppercase;
+  }
+  .col--delivered .col__head { border-color: var(--chai); }
+
+  .tokens { list-style: none; padding: 0; display: grid; gap: 1.25rem; }
+
+  /* ---- a token: number on the stub, items on the body ---- */
+  .token {
+    --stub: 10.5rem;
+    display: grid; grid-template-columns: var(--stub) 1fr; align-items: center;
+    min-height: 7.5rem; color: var(--chai);
+    /* the notches are punched out so the panel colour shows through */
+    background:
+      radial-gradient(circle at var(--stub) 0, transparent .85rem, var(--chalk) .88rem) top / 100% 51% no-repeat,
+      radial-gradient(circle at var(--stub) 100%, transparent .85rem, var(--chalk) .88rem) bottom / 100% 51% no-repeat;
+    border-radius: .5rem;
+  }
+  .token__no {
+    font-family: "Big Shoulders Display", Impact, sans-serif; font-weight: 900;
+    font-size: 5.25rem; line-height: 1; text-align: center; color: var(--chilli);
+    padding: .2rem 0; font-variant-numeric: tabular-nums;
+  }
+  .token__no i { font-style: normal; font-size: .5em; vertical-align: .55em; margin-right: .06em; opacity: .8; }
+  .token__items {
+    padding: .9rem 1.6rem .9rem 1.8rem; font-weight: 700; font-size: 2.1rem; line-height: 1.15;
+    border-left: .2rem dashed rgba(43, 24, 16, .35); align-self: stretch; display: flex; align-items: center;
+    margin-left: -.2rem;
+  }
+
+  .col--ready .token { --stub: 15rem; min-height: 11.5rem; box-shadow: .35rem .35rem 0 var(--chai); }
+  .col--ready .token__no { font-size: 9rem; }
+  .col--ready .token__items { font-size: 3.1rem; padding-left: 2.2rem; }
+  .col--ready .tokens { gap: 1.9rem; }
+
+  .col--delivered .token { --stub: 8rem; min-height: 5.6rem; opacity: .78; }
+  .col--delivered .token__no { font-size: 3.75rem; color: var(--chai); }
+  .col--delivered .token__items { font-size: 1.55rem; padding: .6rem 1rem .6rem 1.2rem; }
+  .col--delivered .tokens { gap: .9rem; }
+
+  .empty {
+    font-family: "JetBrains Mono", ui-monospace, monospace; font-weight: 500;
+    font-size: 1.5rem; opacity: .8; padding-top: .5rem;
+  }
+
+  /* a token that has just turned ready is stamped down once */
+  .token--new { animation: stamp .7s cubic-bezier(.2, 1.4, .4, 1) both; }
+  @keyframes stamp {
+    0% { transform: scale(1.18) rotate(-2deg); opacity: 0; }
+    100% { transform: none; opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) { .token--new { animation: none; } }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="brand">Builder's Cafe <small>ORDER BOARD</small></div>
+  <div class="clock" id="clock">12:08</div>
+</header>
+
+<main class="board">
+
+  <!-- PREPARING: orders in the queue -->
+  <section class="col col--preparing" aria-labelledby="h-prep">
+    <div class="col__head"><h2 id="h-prep">Preparing</h2><p>3 orders</p></div>
+    <ol class="tokens">
+      <!-- TEMPLATE: one card. Repeat once per order. -->
+      <li class="token">
+        <span class="token__no"><i>#</i>14</span>
+        <span class="token__items">Cold Coffee ×2, Espresso</span>
+      </li>
+      <li class="token">
+        <span class="token__no"><i>#</i>15</span>
+        <span class="token__items">Masala Chai</span>
+      </li>
+      <li class="token">
+        <span class="token__no"><i>#</i>16</span>
+        <span class="token__items">Tapri Coffee, Frappe Mocha</span>
+      </li>
+    </ol>
+  </section>
+
+  <!-- READY: the biggest panel, what people are waiting for -->
+  <section class="col col--ready" aria-labelledby="h-ready">
+    <div class="col__head"><h2 id="h-ready">Ready</h2><p>Collect at the counter</p></div>
+    <ol class="tokens" aria-live="polite">
+      <li class="token token--new">
+        <span class="token__no"><i>#</i>13</span>
+        <span class="token__items">Cafe Latte, Masala Chai</span>
+      </li>
+      <li class="token">
+        <span class="token__no"><i>#</i>12</span>
+        <span class="token__items">Cappuccino</span>
+      </li>
+    </ol>
+  </section>
+
+  <!-- DELIVERED: the most recent ones only, so the list stays short -->
+  <section class="col col--delivered" aria-labelledby="h-del">
+    <div class="col__head"><h2 id="h-del">Delivered</h2><p>Last 10 min</p></div>
+    <ol class="tokens">
+      <li class="token">
+        <span class="token__no"><i>#</i>11</span>
+        <span class="token__items">Cold Chocolate</span>
+      </li>
+      <li class="token">
+        <span class="token__no"><i>#</i>10</span>
+        <span class="token__items">Tapri Coffee ×2</span>
+      </li>
+      <li class="token">
+        <span class="token__no"><i>#</i>9</span>
+        <span class="token__items">Hot Chocolate, Espresso</span>
+      </li>
+    </ol>
+    <!-- EMPTY STATE examples (shown instead of the list when there is nothing):
+         Preparing: <p class="empty">Nothing brewing right now.</p>
+         Ready:     <p class="empty">Nothing ready yet. Your number shows here.</p>
+         Delivered: <p class="empty">No deliveries yet.</p> -->
+  </section>
+
+</main>
+
+<script>
+  /* The live page replaces this clock and the sample cards with real orders. */
+  (function () {
+    var el = document.getElementById("clock");
+    function tick() {
+      var d = new Date();
+      el.textContent = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+    tick(); setInterval(tick, 15000);
+  })();
+</script>
+</body>
+</html>
