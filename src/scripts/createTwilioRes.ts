@@ -58,7 +58,7 @@ async function createWhatsAppTemplates() {
   const MAX_ITEMS_ON_MENU = 10; // given by the WhatsApp API
   const MAX_CONCURRENT_EVENTS = 5; // given by the WhatsApp API
   let templates: WhatsAppTemplate[] = (await getAllWhatsAppTemplates()).filter(
-    (t) => t.friendly_name.startsWith(CONTENT_PREFIX),
+    (t) => t.friendly_name?.startsWith(CONTENT_PREFIX),
   );
 
   if (Boolean(OVERRIDE_TEMPLATES)) {
@@ -71,7 +71,7 @@ async function createWhatsAppTemplates() {
     }
     console.log(`Deleted ${templates.length} templates.`);
     templates = (await getAllWhatsAppTemplates()).filter((t) =>
-      t.friendly_name.startsWith(CONTENT_PREFIX),
+      t.friendly_name?.startsWith(CONTENT_PREFIX),
     );
   }
 
