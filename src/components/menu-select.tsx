@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 export type { Selection } from "@/types";
 
-const MAX_SELECTABLE_ITEMS = 9;
+const MAX_SELECTABLE_ITEMS = 20;
 
 // Purely decorative selection indicator — the surrounding <button> already
 // carries the interactive/checkbox semantics, so this must never render a real

@@ -1,5 +1,5 @@
 import type { AttendeeRecord, Event } from "@/types";
-import { orderSummary, placeOrder, type CafeDeps } from "./flow";
+import { findItem, orderSummary, placeOrder, type CafeDeps } from "./flow";
 import { msg } from "./messages";
 
 export interface PaymentIo {
@@ -60,10 +60,9 @@ export async function confirmPayment(
     return "amount-mismatch";
   }
 
-  const find = (title: string) => event.selection.items.find((i) => i.title === title);
-  const coffee = pending.coffee ? find(pending.coffee) : undefined;
+  const coffee = pending.coffee ? findItem(event, pending.coffee, "free") : undefined;
   const titles = pending.items ?? (pending.extra ? [pending.extra] : []);
-  const items = titles.map(find);
+  const items = titles.map((t) => findItem(event, t, "paid"));
   if (
     (pending.coffee && !coffee) ||
     items.some((i) => !i) ||

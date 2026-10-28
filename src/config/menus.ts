@@ -3,63 +3,117 @@ export { modes } from "@/types";
 import type { Menus } from "@/types";
 
 export default {
-  // Builder's Cafe menu.
-  // PLACEHOLDER prices and savoury items: the client confirms the final menu
-  // and the INR price of each item (0 = free). Items are shown to attendees in
-  // this order, grouped by category.
+  // Builder's Cafe menu, from the client. It may change later.
+  // Free (the quiz prize): Cappuccino, Cafe Latte, Masala Chai, Tapri Coffee.
+  // Paid: every hot drink is Rs 80 and every cold drink is Rs 100.
+  // The same drink is listed twice, once free and once priced. The title is
+  // what attendees see and what orders use; the shortTitle must be unique
+  // because the dashboard's menu picker identifies items by it. Items are shown
+  // to attendees in this order.
   barista: {
     items: [
+      // Free with the quiz.
       {
-        shortTitle: "Cutting Chai",
-        title: "Cutting Chai",
-        description: "Free with the quiz",
+        shortTitle: "Cappuccino (Free)",
+        title: "Cappuccino",
+        description: "Hot",
         category: "coffee",
         price: 0,
       },
       {
-        shortTitle: "Filter Coffee",
-        title: "Filter Coffee",
-        description: "Free with the quiz",
+        shortTitle: "Cafe Latte (Free)",
+        title: "Cafe Latte",
+        description: "Hot",
         category: "coffee",
         price: 0,
+      },
+      {
+        shortTitle: "Masala Chai (Free)",
+        title: "Masala Chai",
+        description: "Hot",
+        category: "coffee",
+        price: 0,
+      },
+      {
+        shortTitle: "Tapri Coffee (Free)",
+        title: "Tapri Coffee",
+        description: "Hot",
+        category: "coffee",
+        price: 0,
+      },
+      // Paid.
+      {
+        shortTitle: "Espresso",
+        title: "Espresso",
+        description: "Hot",
+        category: "coffee",
+        price: 80,
       },
       {
         shortTitle: "Cappuccino",
         title: "Cappuccino",
-        description: "Free with the quiz",
+        description: "Hot",
         category: "coffee",
-        price: 0,
+        price: 80,
       },
       {
-        shortTitle: "Espresso",
-        title: "Espresso",
-        description: "Paid (placeholder price)",
+        shortTitle: "Cafe Latte",
+        title: "Cafe Latte",
+        description: "Hot",
         category: "coffee",
-        price: 100, // PLACEHOLDER
+        price: 80,
       },
       {
-        shortTitle: "Latte",
-        title: "Latte",
-        description: "Paid (placeholder price)",
+        shortTitle: "Cold Coffee",
+        title: "Cold Coffee",
+        description: "Cold",
         category: "coffee",
-        price: 150, // PLACEHOLDER
+        price: 100,
       },
       {
-        shortTitle: "Veg Puff",
-        title: "Veg Puff",
-        description: "Snack, paid (placeholder price)",
-        category: "savoury",
-        price: 60, // PLACEHOLDER
+        shortTitle: "Frappe Mocha",
+        title: "Frappe Mocha",
+        description: "Cold",
+        category: "coffee",
+        price: 100,
       },
       {
-        shortTitle: "Cheese Croissant",
-        title: "Cheese Croissant",
-        description: "Snack, paid (placeholder price)",
-        category: "savoury",
-        price: 90, // PLACEHOLDER
+        shortTitle: "Tapri Coffee",
+        title: "Tapri Coffee",
+        description: "Hot",
+        category: "coffee",
+        price: 80,
+      },
+      {
+        shortTitle: "Masala Chai",
+        title: "Masala Chai",
+        description: "Hot",
+        category: "coffee",
+        price: 80,
+      },
+      {
+        shortTitle: "Hot Chocolate",
+        title: "Hot Chocolate",
+        description: "Hot",
+        category: "coffee",
+        price: 80,
+      },
+      {
+        shortTitle: "Cold Chocolate",
+        title: "Cold Chocolate",
+        description: "Cold",
+        category: "coffee",
+        price: 100,
+      },
+      {
+        shortTitle: "Cold Americano",
+        title: "Cold Americano",
+        description: "Cold",
+        category: "coffee",
+        price: 100,
       },
     ],
-    // Add-ons offered with the coffee. PLACEHOLDER list: the client confirms
+    // Add-ons offered with the drinks. PLACEHOLDER list: the client confirms
     // the final sugar levels and other add-ons.
     modifiers: ["No sugar", "Less sugar", "Extra sugar", "Extra hot"],
   },

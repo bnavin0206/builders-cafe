@@ -334,12 +334,23 @@ function menuChoices(event: Event, mode: "free" | "paid"): MenuItem[] {
   return itemsIn(event.selection.items, "coffee").filter(isFree);
 }
 
-/** Rows for the paid-item list: every choice, plus Done once there is a cart. */
+/**
+ * Rows for the paid-item list: every choice, plus Done (or No thanks) when
+ * there is room. A WhatsApp list holds 10 rows, so a menu of 10 or more leaves
+ * no room and listHint tells people to type it instead.
+ */
 function itemRows(choices: MenuItem[], cart: string[], kind: "paid" | "extra"): ListRow[] {
   const rows = choices.map((i, n) => itemRow(i, n + 1));
+  if (choices.length >= MAX_LIST_ROWS) return rows;
   if (cart.length > 0) rows.push(noneRow("Done", "Continue with your order"));
   else if (kind === "extra") rows.push(noneRow("No thanks", "Place my order as is"));
   return rows;
+}
+
+function listHint(choices: MenuItem[], cart: string[], kind: "paid" | "extra"): string {
+  if (choices.length < MAX_LIST_ROWS) return "";
+  if (cart.length > 0) return " Type DONE when you have finished.";
+  return kind === "extra" ? " Or type NO if you want nothing extra." : "";
 }
 
 async function showCoffeeMenu(
@@ -414,7 +425,12 @@ async function pickItems(
   const current = record.cartItems ?? [];
   const room = rules.maxItemsPerOrder - (record.cartCoffee ? 1 : 0);
   const again = (prompt: { text: string; list: string }, cart = current) =>
-    offer(deps, prompt, itemRows(choices, cart, kind), formatMenu(choices));
+    offer(
+      deps,
+      { text: prompt.text, list: prompt.list + listHint(choices, cart, kind) },
+      itemRows(choices, cart, kind),
+      formatMenu(choices),
+    );
 
   if (isNone(message)) {
     if (kind === "paid" && current.length === 0) {
@@ -442,7 +458,10 @@ async function pickItems(
     if (
       rows.length <= MAX_LIST_ROWS &&
       (await deps.sendList(
-        clip(listMsg.itemAdded(picks[0]!.title, so_far), LIST_BODY_MAX),
+        clip(
+          listMsg.itemAdded(picks[0]!.title, so_far) + listHint(choices, next, kind),
+          LIST_BODY_MAX,
+        ),
         rows,
       ))
     ) {
@@ -469,11 +488,11 @@ async function itemsDone(
 
 /** True when the order so far includes a drink that add-ons (sugar...) apply to. */
 function hasDrink(event: Event, record: AttendeeRecord): boolean {
-  const titles = [...(record.cartCoffee ? [record.cartCoffee] : []), ...(record.cartItems ?? [])];
-  return titles.some((t) => {
-    const item = findItem(event, t);
-    return item && (item.category ?? "coffee") === "coffee";
-  });
+  const items = [
+    ...(record.cartCoffee ? [findItem(event, record.cartCoffee, "free")] : []),
+    ...(record.cartItems ?? []).map((t) => findItem(event, t, "paid")),
+  ];
+  return items.some((i) => i && (i.category ?? "coffee") === "coffee");
 }
 
 /** After add-ons: a paid-menu order is done; a winner may add paid extras. */
@@ -589,7 +608,7 @@ async function askExtra(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
   await deps.save(phone, { stage: Stages.PICK_EXTRA, cartItems: [] });
   await offer(
     deps,
-    { text: msg.extraPrompt, list: listMsg.extraPrompt },
+    { text: msg.extraPrompt, list: listMsg.extraPrompt + listHint(choices, [], "extra") },
     itemRows(choices, [], "extra"),
     formatMenu(choices),
   );
@@ -600,8 +619,18 @@ async function pickExtra(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
   return pickItems(input, deps, rules, "extra");
 }
 
-function findItem(event: Event, title: string): MenuItem | undefined {
-  return event.selection.items.find((i) => i.title === title);
+/**
+ * The same drink can be on the menu twice, once free (the quiz prize) and once
+ * priced. "free" prefers the free one, "paid" the priced one; either falls
+ * back to any item with that title.
+ */
+export function findItem(
+  event: Event,
+  title: string,
+  kind: "free" | "paid",
+): MenuItem | undefined {
+  const same = event.selection.items.filter((i) => i.title === title);
+  return same.find((i) => isFree(i) === (kind === "free")) ?? same[0];
 }
 
 export function orderSummary(
@@ -633,8 +662,8 @@ function orderLines(chosen: MenuItem[]): string[] {
 
 async function finalize(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
   const { event, phone, record } = input;
-  const coffee = record.cartCoffee ? findItem(event, record.cartCoffee) : undefined;
-  const items = (record.cartItems ?? []).map((t) => findItem(event, t));
+  const coffee = record.cartCoffee ? findItem(event, record.cartCoffee, "free") : undefined;
+  const items = (record.cartItems ?? []).map((t) => findItem(event, t, "paid"));
   if (
     (record.cartCoffee && !coffee) ||
     items.some((i) => !i) ||

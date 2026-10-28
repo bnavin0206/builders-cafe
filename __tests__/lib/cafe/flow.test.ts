@@ -1,5 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { cafeRules } from "@/config/cafe-rules";
+import menus from "@/config/menus";
 import { quizBank } from "@/config/quiz-bank";
 import {
   begin,
@@ -1015,5 +1016,89 @@ describe("list picker", () => {
     await s.say("1");
     expect(s.record.stage).toBe(Stages.PICK_EXTRA);
     expect(s.lists).toHaveLength(0);
+  });
+});
+
+describe("the real menu", () => {
+  const realEvent = (): Event => {
+    const e = event();
+    e.selection = {
+      mode: modes.barista,
+      items: menus.barista.items,
+      modifiers: menus.barista.modifiers ?? [],
+    };
+    return e;
+  };
+
+  test("a winner picks from four free drinks", async () => {
+    const s = new Sim(realEvent());
+    s.enableLists();
+    await s.passQuiz();
+    expect(s.lastList!.rows.map((r) => r.title)).toEqual([
+      "Cappuccino",
+      "Cafe Latte",
+      "Masala Chai",
+      "Tapri Coffee",
+    ]);
+    expect(s.lastList!.rows[0]).toMatchObject({ description: "FREE · Hot" });
+  });
+
+  test("the paid list shows all ten drinks with their prices", async () => {
+    const s = new Sim(realEvent());
+    s.enableLists();
+    await s.failQuiz();
+    const rows = s.lastList!.rows;
+    expect(rows).toHaveLength(10);
+    expect(rows[0]).toMatchObject({ title: "Espresso", description: "₹80 · Hot" });
+    expect(rows[3]).toMatchObject({ title: "Cold Coffee", description: "₹100 · Cold" });
+    expect(rows.every((r) => r.title.length <= 24 && r.description.length <= 72)).toBe(true);
+  });
+
+  test("ten drinks leave no room for a Done row, so the prompt says to type it", async () => {
+    const s = new Sim(realEvent());
+    s.enableLists();
+    await s.failQuiz();
+    await s.say("4"); // Cold Coffee
+    expect(s.lists.at(-1)!.rows).toHaveLength(10);
+    expect(s.lists.at(-1)!.rows.some((r) => r.id === "0")).toBe(false);
+    expect(s.lists.at(-1)!.prompt).toContain("Type DONE when you have finished.");
+    await s.say("done");
+    expect(s.record.stage).toBe(Stages.PICK_ADDONS);
+    await s.say("0");
+    expect(s.links[0]!.amountPaise).toBe(10000);
+  });
+
+  test("a winner's extras list also has no room, and says to type NO", async () => {
+    const s = new Sim(realEvent());
+    s.enableLists();
+    await s.passQuiz();
+    await s.say("1");
+    await s.say("0");
+    expect(s.lastList!.rows).toHaveLength(10);
+    expect(s.lastList!.prompt).toContain("Or type NO");
+    await s.say("no");
+    expect(s.orders).toHaveLength(1);
+    expect(s.orders[0]).toMatchObject({ item: "Cappuccino", amountPaise: 0 });
+  });
+
+  test("the same drink free and paid: each is found by its own price", async () => {
+    const s = new Sim(realEvent());
+    await s.passQuiz();
+    await s.say("1"); // free Cappuccino
+    await s.say("0"); // no add-ons
+    await s.say("2"); // paid Cappuccino
+    expect(s.links[0]!.amountPaise).toBe(8000); // only the paid one is charged
+    expect(s.record.pendingOrder).toMatchObject({ coffee: "Cappuccino", items: ["Cappuccino"] });
+    await s.pay();
+    expect(s.orders[0]).toMatchObject({ item: "Cappuccino", extras: "Cappuccino", amountPaise: 8000 });
+    expect(s.record.freeCoffeesTaken).toBe(1);
+  });
+
+  test("hot and cold drinks add up", async () => {
+    const s = new Sim(realEvent());
+    await s.failQuiz();
+    await s.say("1, 4, 4"); // Espresso, Cold Coffee x2
+    await s.say("0");
+    expect(s.links[0]!.amountPaise).toBe(28000); // 80 + 100 + 100
   });
 });

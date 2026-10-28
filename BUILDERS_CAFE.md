@@ -64,8 +64,16 @@ updated brief, to confirm at the meeting) or DEFAULT (developer choice):
 | Already took the quiz, after sign-up or re-scan | go to the paid menu | CLIENT (confirm for winners who have not taken the free coffee; they can reply MENU) |
 | Unpaid link expiry | 2 minutes | CLIENT |
 
-Placeholders to replace: the 20 quiz questions, the add-on list and all
-prices in `menus.ts`.
+Menu (from the client, may change later; `menus.ts`): free with the quiz are
+Cappuccino, Cafe Latte, Masala Chai and Tapri Coffee. The paid menu has ten
+drinks: Espresso, Cappuccino, Cafe Latte, Tapri Coffee, Masala Chai and Hot
+Chocolate at Rs 80 (hot), Cold Coffee, Frappe Mocha, Cold Chocolate and Cold
+Americano at Rs 100 (cold). A drink that is both free and paid is listed twice
+under the same title; the app finds the free or the priced one by context. The
+event's menu is copied into the event when it is created, so after changing
+`menus.ts` update the event's menu in the dashboard too.
+
+Still placeholders: the add-on list. The quiz now has the client's 30 questions.
 
 Open: the display board for ready order numbers is not built yet. The
 WhatsApp ready message still comes from the dashboard's Finish button.
@@ -141,6 +149,6 @@ Open items that must be settled and checked before go-live:
   text approved by Meta. Still undecided: a follow-up message when an order is
   marked served. Razorpay links already carry the attendee's name, email and
   phone.
-- [ ] Replace the placeholders: 20 quiz questions, add-ons, prices, menu.
+- [ ] Confirm the menu, prices and the add-on list (the add-ons are still placeholders).
 - [ ] Switch Razorpay and the WhatsApp sender from test to live.
 - [ ] Rotate every key and password that was used during testing.
