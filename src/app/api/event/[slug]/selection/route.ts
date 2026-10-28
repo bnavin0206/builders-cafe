@@ -3,6 +3,7 @@
 import { updateSyncMapItem } from "@/lib/twilio";
 import { headers } from "next/headers";
 import { Privilege, getAuthenticatedRole } from "@/proxy";
+import { validateSelection } from "@/lib/cafe/menu-validation";
 
 const NEXT_PUBLIC_EVENTS_MAP = process.env.NEXT_PUBLIC_EVENTS_MAP || "";
 
@@ -19,6 +20,11 @@ export async function PUT(
 
   if (role !== Privilege.MIXOLOGIST && role !== Privilege.ADMIN) {
     return new Response("Unauthorized", { status: 401 });
+  }
+
+  const problem = validateSelection(body.selection);
+  if (problem) {
+    return new Response(problem, { status: 400 });
   }
 
   try {

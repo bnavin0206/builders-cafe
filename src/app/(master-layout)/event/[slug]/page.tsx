@@ -25,7 +25,8 @@ import LoadingSpinner from "@/components/loading-spinner";
 import { MenuSelect } from "@/components/menu-select";
 import { useEffect, useRef, useState, use } from "react";
 import { Privilege } from "@/proxy";
-import { AlertTriangleIcon, ChevronDown } from "lucide-react";
+import { AlertTriangleIcon, ChevronDown, Plus, Trash2 } from "lucide-react";
+import { validateSelection } from "@/lib/cafe/menu-validation";
 import QrCodePopoverContent from "./qr-code-popovercontent";
 import { Popover, PopoverTrigger } from "@/components/ui/popover";
 import { modes, EventState } from "@/types";
@@ -37,7 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Event, Language, LeadCollection } from "@/types";
+import type { Event, Language, LeadCollection, MenuItem, Selection } from "@/types";
 
 export type { Event };
 
@@ -111,49 +112,113 @@ function EventPage({ params }: { params: Promise<{ slug: string }> }) {
   function markTouched(field: keyof EventFieldErrors) {
     setTouched((t) => (t[field] ? t : { ...t, [field]: true }));
   }
+  // The problem with the menu as it stands in the form, if any. A menu with a
+  // problem is shown but not saved, so typing is never blocked half way.
+  const [menuProblem, setMenuProblem] = useState<string | null>(null);
+  const [newItem, setNewItem] = useState({ title: "", price: "", description: "" });
+
+  function saveSelection(selection: Selection) {
+    clearTimeout(aiUpdateTimerRef.current);
+    aiUpdateTimerRef.current = setTimeout(async () => {
+      const res = await fetch(`/api/event/${internalEvent.slug}/selection`, {
+        method: "PUT",
+        body: JSON.stringify({ selection }),
+      });
+      if (!res.ok) {
+        toast({
+          title: "Menu not saved",
+          description: (await res.text().catch(() => "")) || res.statusText,
+        });
+      }
+    }, 1500);
+  }
+
+  /** Every change to the menu goes through here: check it, then save it. */
+  function changeSelection(selection: Selection) {
+    const newEvent = { ...internalEvent, selection };
+    const problem = validateSelection(selection);
+    setMenuProblem(problem);
+    if (problem) {
+      updateInternalEvent(newEvent); // keep what was typed, but do not save it
+      return;
+    }
+    updateEvent(newEvent);
+    if (!isNewEvent) saveSelection(selection);
+  }
+
+  function updateMenuItem(index: number, patch: Partial<MenuItem>) {
+    const items = internalEvent.selection.items.map((item, i) => {
+      if (i !== index) return item;
+      const updated = { ...item, ...patch };
+      if ("shortTitle" in patch && !item.originalTitle) {
+        updated.originalTitle = item.shortTitle;
+      }
+      return updated;
+    });
+    changeSelection({ ...internalEvent.selection, items });
+  }
+
   function updateMenuItemField(
     index: number,
     field: "title" | "shortTitle" | "description",
     value: string,
   ) {
-    const updatedItems = internalEvent.selection.items.map((item, i) => {
-      if (i !== index) return item;
-      const updated = { ...item, [field]: value };
-      if (field === "shortTitle" && !item.originalTitle) {
-        updated.originalTitle = item.shortTitle;
-      }
-      return updated;
-    });
-    const newEvent = {
-      ...internalEvent,
-      selection: { ...internalEvent.selection, items: updatedItems },
+    updateMenuItem(index, { [field]: value });
+  }
+
+  function updateMenuItemPrice(index: number, value: string) {
+    const rupees = Math.floor(Number(value));
+    updateMenuItem(index, { price: Number.isFinite(rupees) && rupees > 0 ? rupees : 0 });
+  }
+
+  function removeMenuItem(index: number) {
+    const items = internalEvent.selection.items.filter((_, i) => i !== index);
+    changeSelection({ ...internalEvent.selection, items });
+  }
+
+  function addMenuItem() {
+    const title = newItem.title.trim();
+    const rupees = Math.floor(Number(newItem.price || 0));
+    if (!title) {
+      toast({ title: "Give the item a name" });
+      return;
+    }
+    if (!Number.isFinite(rupees) || rupees < 0) {
+      toast({ title: "The price must be 0 or more" });
+      return;
+    }
+    // The dashboard picker identifies items by short title, so it must be unique.
+    const taken = new Set(internalEvent.selection.items.map((i) => i.shortTitle));
+    let shortTitle = title;
+    if (taken.has(shortTitle) && rupees === 0) shortTitle = `${title} (Free)`.slice(0, 24);
+    for (let n = 2; taken.has(shortTitle); n++) {
+      shortTitle = `${title.slice(0, 20)} (${n})`;
+    }
+    const item: MenuItem = {
+      title,
+      shortTitle,
+      description: newItem.description.trim(),
+      category: "coffee",
+      price: rupees,
     };
-    updateEvent(newEvent);
-    clearTimeout(aiUpdateTimerRef.current);
-    aiUpdateTimerRef.current = setTimeout(() => {
-      fetch(`/api/event/${newEvent.slug}/selection`, {
-        method: "PUT",
-        body: JSON.stringify({ selection: newEvent.selection }),
-      });
-    }, 1500);
+    const selection = {
+      ...internalEvent.selection,
+      items: [...internalEvent.selection.items, item],
+    };
+    const problem = validateSelection(selection);
+    if (problem) {
+      toast({ title: "Cannot add this item", description: problem });
+      return;
+    }
+    changeSelection(selection);
+    setNewItem({ title: "", price: "", description: "" });
   }
 
   function updateModifierField(index: number, value: string) {
-    const updatedModifiers = internalEvent.selection.modifiers.map((m, i) =>
+    const modifiers = internalEvent.selection.modifiers.map((m, i) =>
       i !== index ? m : value,
     );
-    const newEvent = {
-      ...internalEvent,
-      selection: { ...internalEvent.selection, modifiers: updatedModifiers },
-    };
-    updateEvent(newEvent);
-    clearTimeout(aiUpdateTimerRef.current);
-    aiUpdateTimerRef.current = setTimeout(() => {
-      fetch(`/api/event/${newEvent.slug}/selection`, {
-        method: "PUT",
-        body: JSON.stringify({ selection: newEvent.selection }),
-      });
-    }, 1500);
+    changeSelection({ ...internalEvent.selection, modifiers });
   }
 
   function updateEvent(newEvent: Event) {
@@ -539,21 +604,7 @@ function EventPage({ params }: { params: Promise<{ slug: string }> }) {
               selection={internalEvent.selection}
               onSelectionChange={(newSelection) => {
                 markTouched("items");
-                updateEvent({ ...internalEvent, selection: newSelection });
-                if (!isNewEvent) {
-                  // Debounce the save (like updateMenuItemField/
-                  // updateModifierField below) so rapid successive
-                  // selections send a single PUT with the latest state,
-                  // rather than one fire-and-forget PUT per click that can
-                  // complete out of order and regress the saved selection.
-                  clearTimeout(aiUpdateTimerRef.current);
-                  aiUpdateTimerRef.current = setTimeout(() => {
-                    fetch(`/api/event/${internalEvent.slug}/selection`, {
-                      method: "PUT",
-                      body: JSON.stringify({ selection: newSelection }),
-                    });
-                  }, 1500);
-                }
+                changeSelection(newSelection);
               }}
             />
             {touched.items && fieldErrors.items && (
@@ -563,24 +614,46 @@ function EventPage({ params }: { params: Promise<{ slug: string }> }) {
         )}
       </Card>
 
-      {/* Customize Menu Items */}
-      {!isNewEvent && internalEvent.selection.items.length > 0 && (
+      {/* Customize Menu Items: names, prices, add and remove */}
+      {!isNewEvent && (
         <Card>
           <CardHeader
             className="flex flex-row items-center justify-between cursor-pointer"
             onClick={() => toggleSection("customize")}
           >
-            <CardTitle className="text-base font-semibold">Customize Menu Items</CardTitle>
+            <CardTitle className="text-base font-semibold">Menu, prices and add-ons</CardTitle>
             <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${collapsed.customize ? "" : "rotate-180"}`} />
           </CardHeader>
           {!collapsed.customize && (
             <CardContent className="space-y-6">
+              <p className="text-xs text-gray-500">
+                Price is in rupees. 0 means free: it is offered as the quiz prize and not charged.
+                Changes are saved automatically and apply to new orders.
+              </p>
+              {menuProblem && (
+                <Alert variant="destructive">
+                  <AlertTriangleIcon className="h-4 w-4" />
+                  <AlertTitle>Not saved yet</AlertTitle>
+                  <AlertDescription>{menuProblem}</AlertDescription>
+                </Alert>
+              )}
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {internalEvent.selection.items.map((item, index) => (
                   <div key={item.originalTitle ?? item.shortTitle} className="space-y-3 rounded-lg border border-gray-100 bg-gray-50 p-4">
-                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">
-                      {item.originalTitle ?? item.shortTitle}
-                    </p>
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                        {item.originalTitle ?? item.shortTitle}
+                      </p>
+                      <button
+                        type="button"
+                        aria-label={`Remove ${item.title}`}
+                        title="Remove from the menu"
+                        className="text-gray-400 hover:text-red-600"
+                        onClick={() => removeMenuItem(index)}
+                      >
+                        <Trash2 aria-hidden="true" className="h-4 w-4" />
+                      </button>
+                    </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Display Name</Label>
                       <Input
@@ -589,6 +662,22 @@ function EventPage({ params }: { params: Promise<{ slug: string }> }) {
                         onChange={(e) => updateMenuItemField(index, "title", e.target.value)}
                       />
                       <p className="text-xs text-gray-400 text-right">{item.title.length}/24</p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">
+                        Price (₹){" "}
+                        <span className={(item.price ?? 0) === 0 ? "text-green-600" : "text-gray-500"}>
+                          {(item.price ?? 0) === 0 ? "FREE" : ""}
+                        </span>
+                      </Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        step={1}
+                        inputMode="numeric"
+                        value={item.price ?? 0}
+                        onChange={(e) => updateMenuItemPrice(index, e.target.value)}
+                      />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Short Title</Label>
@@ -611,18 +700,64 @@ function EventPage({ params }: { params: Promise<{ slug: string }> }) {
                   </div>
                 ))}
               </div>
+              {internalEvent.selection.items.length === 0 && (
+                <p className="text-sm text-gray-500">
+                  The menu is empty. Add an item below, or pick items in the Menu section above.
+                </p>
+              )}
+
+              <div className="border-t pt-4 space-y-3">
+                <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Add an item</p>
+                <div className="grid sm:grid-cols-4 gap-3 items-end">
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs">Name</Label>
+                    <Input
+                      value={newItem.title}
+                      maxLength={24}
+                      placeholder="e.g. Iced Tea"
+                      onChange={(e) => setNewItem({ ...newItem, title: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Price (₹)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={1}
+                      inputMode="numeric"
+                      value={newItem.price}
+                      placeholder="0 = free"
+                      onChange={(e) => setNewItem({ ...newItem, price: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Description</Label>
+                    <Input
+                      value={newItem.description}
+                      maxLength={72}
+                      placeholder="Hot or Cold"
+                      onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <Button type="button" variant="outline" onClick={addMenuItem}>
+                  <Plus aria-hidden="true" className="h-4 w-4 mr-1" />
+                  Add item
+                </Button>
+              </div>
 
               {internalEvent.selection.modifiers.length > 0 && (
                 <div className="border-t pt-4">
-                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Modifiers</p>
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Add-ons</p>
                   <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {internalEvent.selection.modifiers.map((modifier, index) => {
                       const original = (internalEvent.selection.originalModifiers ?? internalEvent.selection.modifiers)[index];
                       return (
-                        <div key={original} className="space-y-2 rounded-lg border border-gray-100 bg-gray-50 p-3">
+                        <div key={index} className="space-y-2 rounded-lg border border-gray-100 bg-gray-50 p-3">
                           <p className="text-xs text-gray-400">Original: {original}</p>
                           <Input
                             value={modifier}
+                            maxLength={24}
                             onChange={(e) => updateModifierField(index, e.target.value)}
                           />
                         </div>

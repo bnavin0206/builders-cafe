@@ -70,8 +70,15 @@ drinks: Espresso, Cappuccino, Cafe Latte, Tapri Coffee, Masala Chai and Hot
 Chocolate at Rs 80 (hot), Cold Coffee, Frappe Mocha, Cold Chocolate and Cold
 Americano at Rs 100 (cold). A drink that is both free and paid is listed twice
 under the same title; the app finds the free or the priced one by context. The
-event's menu is copied into the event when it is created, so after changing
-`menus.ts` update the event's menu in the dashboard too.
+event's menu is copied into the event when it is created, so changing
+`menus.ts` does not change a live event. To change names, prices and add-ons of
+a live event, use the "Menu, prices and add-ons" section of the event page in
+the dashboard (admin or barista login): edit an item's name or price (0 means
+free, the quiz prize), add an item, or remove one. Changes save automatically
+and apply to new orders; a menu that fails the checks (a price that is not a
+whole number of rupees from 0 to 10000, a name over 24 characters, a repeated
+short title, the same drink twice at the free or at a paid price) is shown but
+not saved. The checks are in `src/lib/cafe/menu-validation.ts`.
 
 Still placeholders: the add-on list. The quiz now has the client's 30 questions.
 
