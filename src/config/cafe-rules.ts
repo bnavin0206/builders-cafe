@@ -34,6 +34,8 @@ export const cafeRules = {
   // with the client: does "found" mean "has taken part before" (then we must
   // also write each participant to Segment) or "is an existing contact"?
   blockIfFoundInSegment: true,
+  // DEFAULT: the TV order board keeps a delivered order on screen this long.
+  boardDeliveredMinutes: 10,
   // CLIENT: an unpaid payment link expires after 2 minutes.
   paymentExpiryMinutes: 2,
 } as const;

@@ -29,6 +29,25 @@ replying with a number or an item name.
    webhook. There is no cancel option.
 7. Barista Order Dashboard: Finish marks the order ready.
 
+### Order board (TV)
+
+A full-screen page for a TV: each order's number and items in three panels,
+Preparing (queued), Ready (marked ready with the check mark) and Delivered
+(marked served, only the last 10 minutes; `boardDeliveredMinutes` in
+`cafe-rules.ts`). Cancelled orders are not shown. It is one page for both
+orientations: columns on a landscape screen, stacked bands with Ready first on a
+portrait one. It refreshes every 3 seconds, stamps an order once when it
+becomes ready, hides orders that do not fit (never half a card) and counts them
+as "+N more", and shows "Reconnecting..." if the feed fails.
+
+Open it with `<PUBLIC_BASE_URL>/event/<slug>/board?key=<BOARD_KEY>`. Set
+`BOARD_KEY` (at least 16 characters) in the environment. With no key, a wrong
+key or a key under 16 characters there is no page and the feed answers 404.
+The feed, `/api/event/<slug>/board?key=...`, returns only the order number, the
+items (the drink plus paid extras, never add-ons) and the time; never a name,
+phone, email or payment detail (`src/lib/cafe/board.ts`). Press F11 on the TV
+browser for full screen. Design samples are in `docs/order-board/`.
+
 ### WhatsApp list pickers
 
 The coffee, add-on and extra menus are sent as WhatsApp list pickers (a button
@@ -142,28 +161,12 @@ Open items that must be settled and checked before go-live:
   decision from the client.
 - [ ] Confirm the DEFAULT and CLIENT rules in `src/config/cafe-rules.ts`.
 - [ ] What "found in Segment" means (see the client document).
-- [ ] **Order display (decision pending, not built).** A full-screen page for
-  a TV, `/event/<slug>/board`, showing each order's number and items under
-  three statuses: Preparing (queued), Ready (marked ready with the check mark)
-  and Delivered (marked served; only the last 10 minutes or last N orders so it
-  stays short; cancelled orders are not shown). It refreshes every few seconds
-  from a new read-only feed that returns only the order number, the items and
-  the status, never names, phones or payment details. A newly ready order is
-  highlighted once; no sound, because browsers block autoplay.
-  Design samples are in `docs/order-board/` (`landscape.html` for 1920x1080,
-  `portrait.html` for 1080x1920, with preview images). Tokens look like tea
-  stall chits: red order number on a stub, dashed tear line, punched notches;
-  blue Preparing, marigold Ready (the biggest), grey Delivered. Landscape is
-  three columns; portrait is three stacked bands, Ready first.
-  To decide: (1) landscape, portrait, or one page that switches by itself
-  (recommended, works on any TV); (2) access: a link with a secret key
-  (recommended, nothing to type on the TV), a fully open page, or the kiosk
-  login (`KIOSK_LOGIN`, which expires after a day); (3) how long Delivered
-  stays; (4) add-ons on the TV or not (recommended: not); (5) changes to the
-  colours, words or layout. Also to handle when building: more orders than fit
-  on screen (show "+N more", newest first), and order numbers do not restart
-  at #1 (rebuild the order list once before the event if wanted). The TV needs
-  the app reachable, so this depends on the hosting decision.
+- [ ] **Order display: built, to try on the TV.** `/event/<slug>/board?key=<BOARD_KEY>`
+  shows each order's number and items under Preparing, Ready and Delivered
+  (see "Order board" above). Still to do: try it on the real TV, decide the
+  permanent address (the TV needs the app reachable, so it depends on the
+  hosting decision), and optionally rebuild the order list once before the
+  event so numbers start at #1.
 - [ ] **Pickup flow and the "order ready" message.** Built: each order keeps
   the attendee's sign-up name, the dashboard shows it next to the masked
   number, and the ready message now reads "Your {item} is ready. Please show
