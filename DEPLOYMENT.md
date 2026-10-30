@@ -72,6 +72,8 @@ The script creates or updates:
 - Container Apps environment
 - Container App with external ingress on port `3000`
 
+`BOARD_KEY` (the secret in the TV order board link) is passed as a secret too; set it in `.env.local` before deploying, or the board stays switched off.
+
 Sensitive values such as `TWILIO_API_SECRET`, `BASIC_AUTH_PASSWORD`, and `SEGMENT_PROFILE_KEY` are configured as Container App secrets. The app is pinned to one replica because event runtime state should not fan out unexpectedly.
 
 ## 4. Configure Twilio

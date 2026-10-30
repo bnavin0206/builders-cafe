@@ -203,6 +203,8 @@ secret_keys=(
   ADMIN_LOGIN
   MIXOLOGIST_LOGIN
   KIOSK_LOGIN
+  # Secret in the TV order board link (/event/<slug>/board?key=...)
+  BOARD_KEY
   PUBLIC_BASE_URL
   # Required for QR mode (LEAD_COLLECTION=QR):
   TWILIO_CONVERSATION_CONFIGURATION_ID
