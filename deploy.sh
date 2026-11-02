@@ -34,6 +34,72 @@ if [[ ! -f "$ENV_FILE" ]]; then
   exit 1
 fi
 
+# Read the settings file the way bash needs it: without the Windows carriage
+# return at the end of each line and without a byte order mark. A CRLF file
+# (Notepad's default) would otherwise leave an invisible \r on every value.
+load_env_file() {
+  set -a
+  # shellcheck disable=SC1090
+  source <(sed '1s/^\xEF\xBB\xBF//' "$ENV_FILE" | tr -d '\r')
+  set +a
+}
+
+# ./deploy.sh --check: show which settings are filled in (never the values) and
+# stop, before anything is sent to Azure.
+if [[ "${1:-}" == "--check" ]]; then
+  load_env_file
+  echo "Settings file: $ENV_FILE"
+  problems=0
+  show() {
+    local key="$1" kind="${2:-required}"
+    if [[ -n "${!key:-}" ]]; then
+      echo "  SET      $key"
+    elif [[ "$kind" == "required" ]]; then
+      echo "  MISSING  $key"
+      problems=$((problems + 1))
+    else
+      echo "  empty    $key (optional)"
+    fi
+  }
+  echo "Needed for the app to start:"
+  for k in TWILIO_ACCOUNT_SID TWILIO_API_KEY TWILIO_API_SECRET TWILIO_SYNC_SERVICE_SID \
+           TWILIO_MESSAGING_SERVICE_SID TWILIO_VERIFY_SERVICE_SID; do show "$k"; done
+  echo "Needed for the cafe:"
+  for k in TWILIO_AUTH_TOKEN RAZORPAY_KEY_ID RAZORPAY_KEY_SECRET RAZORPAY_WEBHOOK_SECRET \
+           ADMIN_LOGIN MIXOLOGIST_LOGIN BOARD_KEY PUBLIC_BASE_URL SERVICE_INSTANCE_PREFIX \
+           LEAD_COLLECTION EVENT_NAME; do show "$k"; done
+  echo "Optional:"
+  for k in KIOSK_LOGIN DEPLOY_ADMIN_LOGIN DEPLOY_MIXOLOGIST_LOGIN DEPLOY_KIOSK_LOGIN \
+           LEADS_WEBHOOK_URL LEADS_WEBHOOK_SECRET; do show "$k" optional; done
+  echo "Checks:"
+  case "${RAZORPAY_KEY_ID:-}" in
+    rzp_test_*) echo "  Razorpay keys are TEST keys" ;;
+    rzp_live_*) echo "  Razorpay keys are LIVE keys (real money)" ;;
+    "") ;;
+    *) echo "  Razorpay key id does not start with rzp_test_ or rzp_live_"; problems=$((problems + 1)) ;;
+  esac
+  if [[ "${PUBLIC_BASE_URL:-}" == *ngrok* || "${PUBLIC_BASE_URL:-}" == *localhost* ]]; then
+    echo "  PUBLIC_BASE_URL still points at ngrok or localhost: set the Azure address"
+    problems=$((problems + 1))
+  elif [[ -n "${PUBLIC_BASE_URL:-}" && "${PUBLIC_BASE_URL}" != https://* ]]; then
+    echo "  PUBLIC_BASE_URL should start with https://"
+    problems=$((problems + 1))
+  fi
+  if [[ -n "${BOARD_KEY:-}" && ${#BOARD_KEY} -lt 16 ]]; then
+    echo "  BOARD_KEY is shorter than 16 characters, so the TV board stays off"
+    problems=$((problems + 1))
+  fi
+  if [[ -z "${DEPLOY_ADMIN_LOGIN:-}" ]]; then
+    echo "  note: no DEPLOY_ADMIN_LOGIN, so the deployed app reuses ADMIN_LOGIN"
+  fi
+  if [[ $problems -gt 0 ]]; then
+    echo "$problems problem(s) to fix before deploying."
+    exit 1
+  fi
+  echo "Looks complete. Nothing was sent anywhere."
+  exit 0
+fi
+
 require_command az
 
 if ! az account show >/dev/null 2>&1; then
@@ -42,10 +108,7 @@ if ! az account show >/dev/null 2>&1; then
 fi
 
 echo "Loading app configuration from $ENV_FILE"
-set -a
-# shellcheck disable=SC1090
-source "$ENV_FILE"
-set +a
+load_env_file
 
 AZURE_RESOURCE_GROUP="${AZURE_RESOURCE_GROUP:-}"
 AZURE_LOCATION="${AZURE_LOCATION:-}"
