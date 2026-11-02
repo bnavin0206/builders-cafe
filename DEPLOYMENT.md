@@ -201,3 +201,30 @@ az containerapp ingress enable \
   --type external \
   --target-port 3000
 ```
+
+## Builder's Cafe deployment notes
+
+- `.dockerignore` keeps `.env*`, `node_modules`, `.next` and `.git` out of the
+  image build (without it `az acr build .` uploads over 1 GB, including every
+  secret, and the host's `node_modules` overwrites the Linux ones). The image
+  gets its settings from the Container App, not from a file.
+- `.gitattributes` keeps `deploy.sh` on Unix line endings, so it also runs from
+  Git Bash on Windows.
+- Use a separate settings file for the deployed app so the local one is not
+  touched: `ENV_FILE=.env.azure.local ./deploy.sh` (the `.local` ending keeps it
+  out of git). It needs the app's own `PUBLIC_BASE_URL` and, for the live app,
+  `DEPLOY_ADMIN_LOGIN`, `DEPLOY_MIXOLOGIST_LOGIN` and `DEPLOY_KIOSK_LOGIN`.
+- The file is read with bash `source`, so wrap a value that has a space,
+  quote or `$` in single quotes. Check it parses without printing any value:
+  `bash -c 'set -a; source .env.azure.local; echo parses ok'`.
+- The app will not start unless these are set: `TWILIO_ACCOUNT_SID`,
+  `TWILIO_API_KEY`, `TWILIO_API_SECRET`, `TWILIO_SYNC_SERVICE_SID`,
+  `TWILIO_MESSAGING_SERVICE_SID`, `TWILIO_VERIFY_SERVICE_SID`. Also set
+  `TWILIO_AUTH_TOKEN`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`,
+  `RAZORPAY_WEBHOOK_SECRET`, `ADMIN_LOGIN`, `MIXOLOGIST_LOGIN`, `BOARD_KEY`,
+  `PUBLIC_BASE_URL`, `SERVICE_INSTANCE_PREFIX`, `LEAD_COLLECTION`, `EVENT_NAME`.
+- After the first deploy, point the WhatsApp sender's incoming webhook at
+  `https://<app>/webhooks/messaging`, register a Razorpay webhook for
+  `payment_link.paid` at `https://<app>/webhooks/razorpay`, and stop ngrok. The
+  attendee, order and event data live in Twilio Sync, so they are shared with
+  any other copy of the app that uses the same Sync service.

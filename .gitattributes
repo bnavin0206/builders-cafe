@@ -1,0 +1,4 @@
+# Shell scripts and the Dockerfile must keep Unix line endings, also when
+# checked out on Windows, or bash fails with "$'\r': command not found".
+*.sh text eol=lf
+Dockerfile text eol=lf
