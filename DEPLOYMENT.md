@@ -231,3 +231,39 @@ az containerapp ingress enable \
   `payment_link.paid` at `https://<app>/webhooks/razorpay`, and stop ngrok. The
   attendee, order and event data live in Twilio Sync, so they are shared with
   any other copy of the app that uses the same Sync service.
+
+## Deploy to an existing Azure Web App (App Service on Linux)
+
+`deploy-webapp.sh` puts the app on a Web App that already exists, running as a
+container built in Azure Container Registry. It is separate from `deploy.sh`
+(which creates a Container App). Use a Linux plan of Basic or higher: a Free or
+Shared plan cannot stay always on, and a Windows plan cannot run the image.
+
+You name the target yourself; there are no defaults:
+
+```sh
+export AZURE_RESOURCE_GROUP=<resource group>
+export AZURE_WEBAPP_NAME=<web app name>
+export AZURE_ACR_NAME=<registry name, 5-50 letters and digits, unique worldwide>
+ENV_FILE=.env.azure.local ./deploy-webapp.sh --check    # settings set or missing, names only
+ENV_FILE=.env.azure.local ./deploy-webapp.sh --plan     # looks at Azure, changes nothing
+ENV_FILE=.env.azure.local ./deploy-webapp.sh --deploy   # asks you to type the Web App's name
+```
+
+What `--deploy` does, in order: creates the registry if it does not exist
+(Basic, about US$5 a month), builds the image in Azure without sending any
+secret as a build argument, adds or replaces the app settings by name (every
+other setting is left alone), points the Web App at the image, turns on Always
+On, HTTPS only and container logging, restarts it and waits for the app to
+answer. The App Service plan is shared with whatever else runs on it and is
+never changed.
+
+Settings go in through a private temporary file, not the command line, because
+`az` on Windows mangles values containing `&`, `%` or `^`. No secret value is
+printed. Set `DEPLOY_ADMIN_LOGIN`, `DEPLOY_MIXOLOGIST_LOGIN` and
+`DEPLOY_KIOSK_LOGIN` in the settings file to give the live app its own logins.
+
+After the first deploy: set a health check path (`/webhooks/messaging`) in the
+portal under the Web App's Health check; point the WhatsApp sender's incoming
+webhook at `https://<app>/webhooks/messaging`; register the Razorpay webhook
+for `payment_link.paid` at `https://<app>/webhooks/razorpay`; stop ngrok.
