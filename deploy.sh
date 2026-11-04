@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=scripts/load-env.sh
+source "$HERE/scripts/load-env.sh"
+
 APP_PORT="${APP_PORT:-3000}"
 DEFAULT_LOCATION="${DEFAULT_LOCATION:-northeurope}"
 DEFAULT_RESOURCE_GROUP="${DEFAULT_RESOURCE_GROUP:-rg-twilio-mixologist}"
@@ -34,26 +38,21 @@ if [[ ! -f "$ENV_FILE" ]]; then
   exit 1
 fi
 
-# Read the settings file the way bash needs it: without the Windows carriage
-# return at the end of each line and without a byte order mark. A CRLF file
-# (Notepad's default) would otherwise leave an invisible \r on every value.
-load_env_file() {
-  set -a
-  # shellcheck disable=SC1090
-  source <(sed '1s/^\xEF\xBB\xBF//' "$ENV_FILE" | tr -d '\r')
-  set +a
-}
-
 # ./deploy.sh --check: show which settings are filled in (never the values) and
 # stop, before anything is sent to Azure.
 if [[ "${1:-}" == "--check" ]]; then
-  load_env_file
+  load_env_file "$ENV_FILE"
   echo "Settings file: $ENV_FILE"
   problems=0
+  if (( ${#ENV_IGNORED_LINES[@]} > 0 )); then
+    echo "  note: line(s) ${ENV_IGNORED_LINES[*]} are not NAME=value and were skipped"
+  fi
   show() {
-    local key="$1" kind="${2:-required}"
+    local key="$1" kind="${2:-required}" alt="DEPLOY_$1"
     if [[ -n "${!key:-}" ]]; then
       echo "  SET      $key"
+    elif [[ "$key" == *_LOGIN && -n "${!alt:-}" ]]; then
+      echo "  SET      $key (the deployed app uses $alt)"
     elif [[ "$kind" == "required" ]]; then
       echo "  MISSING  $key"
       problems=$((problems + 1))
@@ -108,7 +107,7 @@ if ! az account show >/dev/null 2>&1; then
 fi
 
 echo "Loading app configuration from $ENV_FILE"
-load_env_file
+load_env_file "$ENV_FILE"
 
 AZURE_RESOURCE_GROUP="${AZURE_RESOURCE_GROUP:-}"
 AZURE_LOCATION="${AZURE_LOCATION:-}"

@@ -31,6 +31,8 @@ IMAGE_TAG="${IMAGE_TAG:-$(date +%Y%m%d%H%M%S)}"
 ENV_FILE="${ENV_FILE:-.env.azure.local}"
 HEALTH_WAIT_SECONDS="${HEALTH_WAIT_SECONDS:-420}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=scripts/load-env.sh
+source "$HERE/scripts/load-env.sh"
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 say() { echo "$*"; }
@@ -39,16 +41,6 @@ case "$MODE" in
   --check|--plan|--deploy) ;;
   *) die "Unknown option '$MODE'. Use --check, --plan or --deploy." ;;
 esac
-
-# Read the settings file the way bash needs it: no Windows carriage returns, no
-# byte order mark (the same loader as deploy.sh).
-load_env_file() {
-  [[ -f "$ENV_FILE" ]] || die "Missing settings file: $ENV_FILE"
-  set -a
-  # shellcheck disable=SC1090
-  source <(sed '1s/^\xEF\xBB\xBF//' "$ENV_FILE" | tr -d '\r')
-  set +a
-}
 
 if [[ "$MODE" == "--check" ]]; then
   ENV_FILE="$ENV_FILE" bash "$HERE/deploy.sh" --check
@@ -72,7 +64,7 @@ if ! az account show >/dev/null 2>&1; then
 fi
 say "Azure subscription: $(azv account show --query name -o tsv)"
 
-load_env_file
+load_env_file "$ENV_FILE" || exit 1
 
 # Local-dev logins stay local; the live app can have its own.
 ADMIN_LOGIN="${DEPLOY_ADMIN_LOGIN:-${ADMIN_LOGIN:-}}"

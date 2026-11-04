@@ -214,12 +214,16 @@ az containerapp ingress enable \
   touched: `ENV_FILE=.env.azure.local ./deploy.sh` (the `.local` ending keeps it
   out of git). It needs the app's own `PUBLIC_BASE_URL` and, for the live app,
   `DEPLOY_ADMIN_LOGIN`, `DEPLOY_MIXOLOGIST_LOGIN` and `DEPLOY_KIOSK_LOGIN`.
-- The file is read with bash `source`, so wrap a value that has a space,
-  quote or `$` in single quotes. The script ignores Windows line endings and a
-  byte order mark, so Notepad is fine. Check the file before deploying, without
-  printing any value or touching Azure: `ENV_FILE=.env.azure.local ./deploy.sh --check`
-  (it lists what is set or missing, whether the Razorpay keys are test or live, and
-  whether `PUBLIC_BASE_URL` still points at ngrok).
+- The settings file is read as plain `NAME=value` lines by `scripts/load-env.sh`,
+  never run as shell code, so a value may hold an apostrophe, spaces, `$` or `=`
+  without quotes (single or double quotes around a whole value are removed).
+  Windows line endings and a byte order mark are ignored, so Notepad is fine. A
+  line that is not `NAME=value` is skipped, and `--check` tells you its line
+  number (never its text). Check a file before deploying, without printing any
+  value or touching Azure: `ENV_FILE=.env.azure.local ./deploy.sh --check` (it
+  lists what is set or missing, whether the Razorpay keys are test or live, and
+  whether `PUBLIC_BASE_URL` still points at ngrok). `DEPLOY_ADMIN_LOGIN` and
+  `DEPLOY_MIXOLOGIST_LOGIN` count as the logins when the plain ones are absent.
 - The app will not start unless these are set: `TWILIO_ACCOUNT_SID`,
   `TWILIO_API_KEY`, `TWILIO_API_SECRET`, `TWILIO_SYNC_SERVICE_SID`,
   `TWILIO_MESSAGING_SERVICE_SID`, `TWILIO_VERIFY_SERVICE_SID`. Also set
