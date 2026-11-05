@@ -13,7 +13,13 @@
 #   export AZURE_RESOURCE_GROUP=<resource group>
 #   export AZURE_WEBAPP_NAME=<web app name>
 #   export AZURE_ACR_NAME=<new or existing registry name: 5-50 letters/digits>
+#   export AZURE_ACR_RESOURCE_GROUP=<optional: a separate group for the registry>
 #   ENV_FILE=.env.azure.local ./deploy-webapp.sh --plan
+#
+# With AZURE_ACR_RESOURCE_GROUP the registry lives in its own group (created if
+# missing, no charge), apart from your other apps; deleting that group later
+# removes everything this script added. Without it the registry goes in the
+# Web App's group.
 #
 # It only touches this Web App and the registry named above. The App Service
 # plan is shared with whatever else runs on it; it is never changed. Settings are
@@ -52,6 +58,8 @@ fi
 : "${AZURE_WEBAPP_NAME:?Set AZURE_WEBAPP_NAME (the name of the Web App)}"
 : "${AZURE_ACR_NAME:?Set AZURE_ACR_NAME (the Container Registry name; 5-50 letters and digits)}"
 [[ "$AZURE_ACR_NAME" =~ ^[a-zA-Z0-9]{5,50}$ ]] || die "AZURE_ACR_NAME must be 5-50 letters and digits only."
+ACR_RG="${AZURE_ACR_RESOURCE_GROUP:-$AZURE_RESOURCE_GROUP}"
+[[ "$ACR_RG" =~ ^[a-zA-Z0-9._()-]{1,90}$ ]] || die "AZURE_ACR_RESOURCE_GROUP has characters Azure does not allow in a resource group name."
 
 command -v az >/dev/null 2>&1 || die "The Azure CLI (az) is not installed or not on the path."
 command -v node >/dev/null 2>&1 || die "Node.js is needed (it builds the settings file safely)."
@@ -120,7 +128,11 @@ EXISTING_SETTINGS="$(azv webapp config appsettings list -g "$AZURE_RESOURCE_GROU
 
 # Registry: exists here, free to create, or the name is taken elsewhere.
 ACR_STATE="missing"
-if az acr show -n "$AZURE_ACR_NAME" -g "$AZURE_RESOURCE_GROUP" >/dev/null 2>&1; then
+ACR_RG_STATE="exists"
+if [[ "$ACR_RG" != "$AZURE_RESOURCE_GROUP" ]] && ! az group show -n "$ACR_RG" >/dev/null 2>&1; then
+  ACR_RG_STATE="missing"
+fi
+if az acr show -n "$AZURE_ACR_NAME" -g "$ACR_RG" >/dev/null 2>&1; then
   ACR_STATE="exists"
 else
   AVAILABLE="$(azv acr check-name --name "$AZURE_ACR_NAME" --query nameAvailable -o tsv)"
@@ -144,11 +156,17 @@ say "Plan:           $PLAN_NAME  ($PLAN_SKU, $PLAN_TIER, $PLAN_WORKERS instance(
 say "Other apps on this plan (not touched): ${OTHER_APPS:-none}"
 say "Runs now as:    ${CURRENT_FX:-unknown}   Always On: ${ALWAYS_ON:-unknown}   HTTPS only: ${HTTPS_ONLY:-unknown}"
 say "Registry:       $AZURE_ACR_NAME  ($([[ "$ACR_STATE" == "exists" ]] && echo "already exists" || echo "will be CREATED: Basic tier, about US\$5 a month, $LOCATION"))"
+if [[ "$ACR_RG" == "$AZURE_RESOURCE_GROUP" ]]; then
+  say "Registry group: $ACR_RG (the same group as the Web App)"
+else
+  say "Registry group: $ACR_RG ($([[ "$ACR_RG_STATE" == "exists" ]] && echo "already exists" || echo "will be CREATED, no charge, apart from your other apps"))"
+fi
 say "Image:          $IMAGE_NAME:$IMAGE_TAG (built in Azure from this folder; .dockerignore keeps .env files out)"
 say
 say "Changes --deploy would make, in order:"
 n=1
-if [[ "$ACR_STATE" != "exists" ]]; then say "  $n. Create the registry $AZURE_ACR_NAME (Basic, admin sign-in on)"; n=$((n+1)); fi
+if [[ "$ACR_RG_STATE" != "exists" ]]; then say "  $n. Create the resource group $ACR_RG for the registry (no charge)"; n=$((n+1)); fi
+if [[ "$ACR_STATE" != "exists" ]]; then say "  $n. Create the registry $AZURE_ACR_NAME in $ACR_RG (Basic, admin sign-in on)"; n=$((n+1)); fi
 say "  $n. Build the image in Azure and store it in the registry"; n=$((n+1))
 say "  $n. Add or replace ${#SET_NAMES[@]} app settings on $AZURE_WEBAPP_NAME (names below), plus the port, host and registry sign-in"; n=$((n+1))
 say "  $n. Point the Web App at the new image; turn Always On, HTTPS only and container logging on"; n=$((n+1))
@@ -171,12 +189,16 @@ if [[ "$ASSUME_YES" != "yes" ]]; then
   [[ "$ANSWER" == "$AZURE_WEBAPP_NAME" ]] || die "Cancelled. Nothing was changed."
 fi
 
+if [[ "$ACR_RG_STATE" != "exists" ]]; then
+  say "Creating resource group $ACR_RG"
+  az group create -n "$ACR_RG" -l "$LOCATION" --tags purpose=builders-cafe-registry -o none
+fi
 if [[ "$ACR_STATE" != "exists" ]]; then
-  say "Creating registry $AZURE_ACR_NAME"
-  az acr create -n "$AZURE_ACR_NAME" -g "$AZURE_RESOURCE_GROUP" -l "$LOCATION" \
+  say "Creating registry $AZURE_ACR_NAME in $ACR_RG"
+  az acr create -n "$AZURE_ACR_NAME" -g "$ACR_RG" -l "$LOCATION" \
     --sku Basic --admin-enabled true -o none
 fi
-ACR_SERVER="$(azv acr show -n "$AZURE_ACR_NAME" -g "$AZURE_RESOURCE_GROUP" --query loginServer -o tsv)"
+ACR_SERVER="$(azv acr show -n "$AZURE_ACR_NAME" -g "$ACR_RG" --query loginServer -o tsv)"
 [[ -n "$ACR_SERVER" ]] || die "Could not read the registry's address."
 
 say "Building the image in Azure (a few minutes)"

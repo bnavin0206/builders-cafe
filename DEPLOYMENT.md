@@ -249,10 +249,16 @@ You name the target yourself; there are no defaults:
 export AZURE_RESOURCE_GROUP=<resource group>
 export AZURE_WEBAPP_NAME=<web app name>
 export AZURE_ACR_NAME=<registry name, 5-50 letters and digits, unique worldwide>
+export AZURE_ACR_RESOURCE_GROUP=<optional: a separate group for the registry, created if missing>
 ENV_FILE=.env.azure.local ./deploy-webapp.sh --check    # settings set or missing, names only
 ENV_FILE=.env.azure.local ./deploy-webapp.sh --plan     # looks at Azure, changes nothing
 ENV_FILE=.env.azure.local ./deploy-webapp.sh --deploy   # asks you to type the Web App's name
 ```
+
+With `AZURE_ACR_RESOURCE_GROUP` set, the registry lives in its own group (created
+if missing, no charge), apart from your other apps; deleting that group later
+removes everything the script added. Without it the registry goes in the Web
+App's group.
 
 What `--deploy` does, in order: creates the registry if it does not exist
 (Basic, about US$5 a month), builds the image in Azure without sending any
