@@ -82,6 +82,7 @@ async function finishSignup(
     NEXT_PUBLIC_ATTENDEES_MAP,
     phone,
     {
+      company: record.company,
       city: record.city,
       stage,
       completedSignup: true,
@@ -106,6 +107,9 @@ async function finishSignup(
     ),
   );
 }
+
+/** The event runs only in Bengaluru, so every lead gets this city. */
+const EVENT_CITY = "Bengaluru";
 
 export async function handleProfileMode(
   phone: string,
@@ -301,52 +305,14 @@ export async function handleProfileMode(
       sendMessage(sender, msg.askCompany, undefined, undefined, from);
       return true;
     }
-    await updateSyncMapItem(
-      NEXT_PUBLIC_ATTENDEES_MAP,
-      phone,
-      { company, stage: Stages.ASK_CITY },
-      EventLengthInSeconds,
-    );
-    sendMessage(sender, msg.askCity, undefined, undefined, from);
+    // The event is only in Bengaluru, so the city is not asked.
+    await finishSignup(phone, sender, { ...attendeeRecord, company, city: EVENT_CITY }, event, from);
     return true;
   }
 
+  // Someone who was already waiting at the old city question: finish for them.
   if (stage === Stages.ASK_CITY) {
-    const city = cleanText(incomingMessageBody);
-    if (!city) {
-      sendMessage(sender, msg.askAgain, undefined, undefined, from);
-      sendMessage(sender, msg.askCity, undefined, undefined, from);
-      return true;
-    }
-    await finishSignup(phone, sender, { ...attendeeRecord, city }, event, from);
-    return true;
-  }
-
-  if (stage === Stages.ASK_COMPANY) {
-    const company = cleanText(incomingMessageBody);
-    if (!company) {
-      sendMessage(sender, msg.askAgain, undefined, undefined, from);
-      sendMessage(sender, msg.askCompany, undefined, undefined, from);
-      return true;
-    }
-    await updateSyncMapItem(
-      NEXT_PUBLIC_ATTENDEES_MAP,
-      phone,
-      { company, stage: Stages.ASK_CITY },
-      EventLengthInSeconds,
-    );
-    sendMessage(sender, msg.askCity, undefined, undefined, from);
-    return true;
-  }
-
-  if (stage === Stages.ASK_CITY) {
-    const city = cleanText(incomingMessageBody);
-    if (!city) {
-      sendMessage(sender, msg.askAgain, undefined, undefined, from);
-      sendMessage(sender, msg.askCity, undefined, undefined, from);
-      return true;
-    }
-    await finishSignup(phone, sender, { ...attendeeRecord, city }, event, from);
+    await finishSignup(phone, sender, { ...attendeeRecord, city: EVENT_CITY }, event, from);
     return true;
   }
 

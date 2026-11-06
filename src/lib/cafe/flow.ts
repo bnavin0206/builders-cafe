@@ -385,16 +385,27 @@ function itemPage(
     choices.forEach((i, n) => {
       if ((i.description ?? "").trim() === shown) rows.push(itemRow(i, n + 1));
     });
-    groups.forEach((g, gi) => {
-      if (g === shown) return;
-      rows.push({
-        id: `page:${gi}`,
-        title: clip(`${g} ▸`, LIST_TITLE_MAX),
-        description: clip(`Show the ${g} items`, LIST_DESCRIPTION_MAX),
-      });
-    });
-    rows.push(...finish);
-    return { rows, group: shown, hint: "" };
+    // Rows left for the other groups once this group's items and Done are in.
+    const slots = MAX_LIST_ROWS - rows.length - finish.length;
+    if (slots >= 1) {
+      const shownAt = groups.indexOf(shown);
+      let others = groups.map((_, gi) => gi).filter((gi) => gi !== shownAt);
+      if (others.length > slots) {
+        // Too many groups for one list: offer the next ones in turn, so every
+        // group stays reachable by tapping "next" a few times.
+        others = Array.from({ length: slots }, (_, k) => (shownAt + 1 + k) % groups.length);
+      }
+      for (const gi of others) {
+        const g = groups[gi]!;
+        rows.push({
+          id: `page:${gi}`,
+          title: clip(`${g} ▸`, LIST_TITLE_MAX),
+          description: clip(`Show the ${g} items`, LIST_DESCRIPTION_MAX),
+        });
+      }
+      rows.push(...finish);
+      return { rows, group: shown, hint: "" };
+    }
   }
 
   const hint =

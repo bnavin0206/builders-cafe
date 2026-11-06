@@ -30,8 +30,10 @@ describe("Builder's Cafe menu", () => {
     ]);
   });
 
-  test("the paid menu has ten drinks: hot ones Rs 80, cold ones Rs 100", () => {
-    expect(paid.map((i) => i.title)).toEqual([
+  test("the paid menu has ten drinks (hot Rs 80, cold Rs 100) and 15 food items at Rs 100", () => {
+    const drinks = paid.filter((i) => i.category !== "savoury");
+    const food = paid.filter((i) => i.category === "savoury");
+    expect(drinks.map((i) => i.title)).toEqual([
       "Espresso",
       "Cappuccino",
       "Cafe Latte",
@@ -43,16 +45,22 @@ describe("Builder's Cafe menu", () => {
       "Cold Chocolate",
       "Cold Americano",
     ]);
-    for (const i of paid) {
+    for (const i of drinks) {
       expect(i.price).toBe(i.description === "Cold" ? 100 : 80);
       expect(["Hot", "Cold"]).toContain(i.description);
     }
-    expect(paid.filter((i) => i.description === "Cold").map((i) => i.title)).toEqual([
+    expect(drinks.filter((i) => i.description === "Cold").map((i) => i.title)).toEqual([
       "Cold Coffee",
       "Frappe Mocha",
       "Cold Chocolate",
       "Cold Americano",
     ]);
+    expect(food).toHaveLength(15);
+    for (const i of food) {
+      expect(i.price).toBe(100);
+      expect(["Sandwich", "Savoury", "Pastry"]).toContain(i.description);
+    }
+    expect(paid.length + free.length).toBeLessThanOrEqual(30);
   });
 
   test("a drink is free and priced under the same title, never twice in one menu", () => {

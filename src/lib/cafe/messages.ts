@@ -4,7 +4,6 @@ export const msg = {
   invalidEmail:
     "That does not look like an email address. Please send it like name@example.com.",
   askCompany: "Which company are you with?",
-  askCity: "Which city are you in?",
   askAgain: "Please reply with a short text.",
   quizIntro: (count: number) =>
     `Welcome to Builder's Cafe! Answer ${count} quick questions to unlock your free coffee.`,

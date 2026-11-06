@@ -1056,9 +1056,13 @@ describe("the real menu", () => {
       "Masala Chai",
       "Hot Chocolate",
       "Cold ▸",
+      "Sandwich ▸",
+      "Savoury ▸",
+      "Pastry ▸",
     ]);
     expect(rows[0]).toMatchObject({ id: "1", description: "₹80 · Hot" });
-    expect(rows.at(-1)).toMatchObject({ id: "page:1", description: "Show the Cold items" });
+    expect(rows[6]).toMatchObject({ id: "page:1", description: "Show the Cold items" });
+    expect(rows).toHaveLength(10);
     expect(rows.some((r) => r.id === "0")).toBe(false); // nothing picked yet
     expect(prompt).toContain("Showing: Hot");
     expect(rows.every((r) => r.title.length <= 24 && r.description.length <= 72)).toBe(true);
@@ -1077,6 +1081,9 @@ describe("the real menu", () => {
       "Cold Chocolate",
       "Cold Americano",
       "Hot ▸",
+      "Sandwich ▸",
+      "Savoury ▸",
+      "Pastry ▸",
     ]);
     expect(s.lastList!.prompt).toContain("Showing: Cold");
     expect(s.record.stage).toBe(Stages.PICK_COFFEE);
@@ -1093,8 +1100,8 @@ describe("the real menu", () => {
     expect(s.lastList!.prompt).toContain("So far: Cold Coffee");
     expect(s.lastList!.prompt).toContain("Showing: Cold");
     expect(s.lastList!.rows.at(-1)).toMatchObject({ id: "0", title: "Done" });
-    expect(s.lastList!.rows.at(-2)).toMatchObject({ id: "page:0", title: "Hot ▸" });
-    expect(s.lastList!.rows).toHaveLength(6);
+    expect(s.lastList!.rows[4]).toMatchObject({ id: "page:0", title: "Hot ▸" });
+    expect(s.lastList!.rows).toHaveLength(9);
 
     await s.say("page:0"); // back to Hot, the cart is kept
     expect(s.lastList!.prompt).toContain("So far: Cold Coffee");
@@ -1158,7 +1165,7 @@ describe("the real menu", () => {
     await s.say("1"); // free Cappuccino
     await s.say("0"); // no add-ons
     expect(s.lastList!.rows.at(-1)).toMatchObject({ id: "0", title: "No thanks" });
-    expect(s.lastList!.rows.at(-2)).toMatchObject({ id: "page:1", title: "Cold ▸" });
+    expect(s.lastList!.rows.at(-2)).toMatchObject({ id: "page:3", title: "Savoury ▸" });
     expect(s.lastList!.prompt).toContain("Showing: Hot");
     await s.say("page:1");
     expect(s.lastList!.rows.map((r) => r.title)).toEqual([
@@ -1167,6 +1174,9 @@ describe("the real menu", () => {
       "Cold Chocolate",
       "Cold Americano",
       "Hot ▸",
+      "Sandwich ▸",
+      "Savoury ▸",
+      "Pastry ▸",
       "No thanks",
     ]);
   });
@@ -1184,6 +1194,49 @@ describe("the real menu", () => {
     await s.say("0");
     expect(s.links[0]!.amountPaise).toBe(10000);
     expect(s.record.pendingOrder).toMatchObject({ coffee: "Cappuccino", items: ["Cold Chocolate"] });
+  });
+
+  test("every page fits one WhatsApp list and every group can be reached", async () => {
+    for (const first of ["no cart", "with cart"]) {
+      const s = new Sim(realEvent());
+      s.enableLists();
+      await s.failQuiz();
+      if (first === "with cart") await s.say("1"); // Espresso: the list gains a Done row
+      const seen = new Set<string>([s.record.cartGroup ?? "Hot"]);
+      for (let tap = 0; tap < 8; tap++) {
+        const rows = s.lastList!.rows;
+        expect(rows.length).toBeLessThanOrEqual(10);
+        // Tap the row for the group that comes next in the rotation.
+        const cur = ["Hot", "Cold", "Sandwich", "Savoury", "Pastry"].indexOf(s.record.cartGroup ?? "Hot");
+        const dist = (r: { id: string }) => (Number(r.id.slice(5)) - cur + 5) % 5;
+        const next = rows
+          .filter((r) => r.id.startsWith("page:"))
+          .sort((a, b) => dist(a) - dist(b))[0]!;
+        await s.say(next.id);
+        seen.add(s.record.cartGroup!);
+      }
+      expect([...seen].sort()).toEqual(["Cold", "Hot", "Pastry", "Sandwich", "Savoury"]);
+    }
+  });
+
+  test("food is on the paid menu, ordered from its own page", async () => {
+    const s = new Sim(realEvent());
+    s.enableLists();
+    await s.failQuiz();
+    await s.say("Sandwich ▸");
+    expect(s.record.cartGroup).toBe("Sandwich");
+    expect(s.lastList!.rows.slice(0, 6).map((r) => r.title)).toEqual([
+      "Chicken Sandwich 1",
+      "Chicken Sandwich 2",
+      "Chicken Sandwich 3",
+      "Mint Sandwich",
+      "Cheese Sandwich",
+      "Potato Sandwich",
+    ]);
+    await s.say("Mint Sandwich");
+    await s.say("Done");
+    await s.say("0");
+    expect(s.links[0]!.amountPaise).toBe(10000);
   });
 
   test("text mode has no pages: the whole menu is numbered", async () => {

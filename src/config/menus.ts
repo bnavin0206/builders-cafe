@@ -5,7 +5,7 @@ import type { Menus } from "@/types";
 export default {
   // Builder's Cafe menu, from the client. It may change later.
   // Free (the quiz prize): Cappuccino, Cafe Latte, Masala Chai, Tapri Coffee.
-  // Paid: every hot drink is Rs 80 and every cold drink is Rs 100.
+  // Paid: every hot drink is Rs 80 and every cold drink is Rs 100; food is Rs 100.
   // The same drink is listed twice, once free and once priced. The title is
   // what attendees see and what orders use; the shortTitle must be unique
   // because the dashboard's menu picker identifies items by it. Items are shown
@@ -110,6 +110,113 @@ export default {
         title: "Cold Americano",
         description: "Cold",
         category: "coffee",
+        price: 100,
+      },
+      // Food truck (Koshys Bakery), every item Rs 100. The three chicken
+      // sandwich names are placeholders until the client sends the real ones.
+      {
+        shortTitle: "Chicken Sandwich 1",
+        title: "Chicken Sandwich 1",
+        description: "Sandwich",
+        category: "savoury",
+        price: 100,
+      },
+      {
+        shortTitle: "Chicken Sandwich 2",
+        title: "Chicken Sandwich 2",
+        description: "Sandwich",
+        category: "savoury",
+        price: 100,
+      },
+      {
+        shortTitle: "Chicken Sandwich 3",
+        title: "Chicken Sandwich 3",
+        description: "Sandwich",
+        category: "savoury",
+        price: 100,
+      },
+      {
+        shortTitle: "Mint Sandwich",
+        title: "Mint Sandwich",
+        description: "Sandwich",
+        category: "savoury",
+        price: 100,
+      },
+      {
+        shortTitle: "Cheese Sandwich",
+        title: "Cheese Sandwich",
+        description: "Sandwich",
+        category: "savoury",
+        price: 100,
+      },
+      {
+        shortTitle: "Potato Sandwich",
+        title: "Potato Sandwich",
+        description: "Sandwich",
+        category: "savoury",
+        price: 100,
+      },
+      {
+        shortTitle: "Chicken Cutlet",
+        title: "Chicken Cutlet",
+        description: "Savoury",
+        category: "savoury",
+        price: 100,
+      },
+      {
+        shortTitle: "Chicken Puff",
+        title: "Chicken Puff",
+        description: "Savoury",
+        category: "savoury",
+        price: 100,
+      },
+      {
+        shortTitle: "Egg Puff",
+        title: "Egg Puff",
+        description: "Savoury",
+        category: "savoury",
+        price: 100,
+      },
+      {
+        shortTitle: "Veg Puff",
+        title: "Veg Puff",
+        description: "Savoury",
+        category: "savoury",
+        price: 100,
+      },
+      {
+        shortTitle: "Veg Spring Roll",
+        title: "Veg Spring Roll",
+        description: "Savoury",
+        category: "savoury",
+        price: 100,
+      },
+      {
+        shortTitle: "Veg Cutlet",
+        title: "Veg Cutlet",
+        description: "Savoury",
+        category: "savoury",
+        price: 100,
+      },
+      {
+        shortTitle: "Cookies",
+        title: "Cookies",
+        description: "Pastry",
+        category: "savoury",
+        price: 100,
+      },
+      {
+        shortTitle: "Danish",
+        title: "Danish",
+        description: "Pastry",
+        category: "savoury",
+        price: 100,
+      },
+      {
+        shortTitle: "Apple Pie",
+        title: "Apple Pie",
+        description: "Pastry",
+        category: "savoury",
         price: 100,
       },
     ],

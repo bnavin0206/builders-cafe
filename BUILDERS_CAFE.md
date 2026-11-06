@@ -7,9 +7,9 @@ replying with a number or an item name.
 ## Journey
 
 1. QR code opens WhatsApp; welcome message.
-2. Sign-up in the chat: name, email, company, city. There is no emailed
+2. Sign-up in the chat: name, email, company. The city is not asked: the event is only in Bengaluru, so every lead is saved with city "Bengaluru". There is no emailed
    code (`verifyEmail: false` in `cafe-rules.ts`; set it to true to bring the
-   code back). When the city arrives `completedSignup` is saved.
+   code back). When the company arrives `completedSignup` is saved.
 3. Segment check: an attendee whose email is already found in Segment is
    blocked (stage `BLOCKED`) and goes no further.
 4. Quiz: anyone who has already taken part in the quiz (for example by
@@ -83,7 +83,7 @@ updated brief, to confirm at the meeting) or DEFAULT (developer choice):
 | After a failed quiz | can buy priced items | CLIENT |
 | Free coffees per attendee | 1 for the whole event; paid orders unlimited | CLIENT |
 | Items in one order | up to 10 (the free coffee counts as one); paid menus allow several items, repeats allowed | DEFAULT |
-| Email verification code | off, just ask for email, company and city | CLIENT |
+| Email verification code | off, just ask for email and company (the city is always Bengaluru) | CLIENT |
 | Block if found in Segment | yes | CLIENT (confirm what "found" means; the email is not verified, so a different address gets past it) |
 | Mobile number check | records are keyed by the phone number, the same on WhatsApp and SMS; a number with a quiz result or attempt has taken part | CLIENT |
 | Already took the quiz, after sign-up or re-scan | go to the paid menu | CLIENT (confirm for winners who have not taken the free coffee; they can reply MENU) |
@@ -91,7 +91,7 @@ updated brief, to confirm at the meeting) or DEFAULT (developer choice):
 
 Menu (from the client, may change later; `menus.ts`): free with the quiz are
 Cappuccino, Cafe Latte, Masala Chai and Tapri Coffee. The paid menu has ten
-drinks: Espresso, Cappuccino, Cafe Latte, Tapri Coffee, Masala Chai and Hot
+drinks (plus 15 food items at Rs 100: sandwiches, savoury, pastries): Espresso, Cappuccino, Cafe Latte, Tapri Coffee, Masala Chai and Hot
 Chocolate at Rs 80 (hot), Cold Coffee, Frappe Mocha, Cold Chocolate and Cold
 Americano at Rs 100 (cold). A drink that is both free and paid is listed twice
 under the same title; the app finds the free or the priced one by context. The

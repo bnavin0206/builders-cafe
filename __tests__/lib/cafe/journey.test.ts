@@ -152,12 +152,11 @@ class Phone {
     );
     expect(res.status).toBeLessThan(300);
   }
-  async signUp(name = "Asha Rao", email = "asha@example.com", company = "Acme Ltd", city = "Chennai") {
+  async signUp(name = "Asha Rao", email = "asha@example.com", company = "Acme Ltd") {
     await this.say("Hi");
     await this.say(name);
     await this.say(email);
     await this.say(company);
-    await this.say(city);
   }
   async passQuiz() {
     for (let i = 0; i < 3; i++) {
@@ -204,7 +203,7 @@ describe("full attendee journey through the webhooks", () => {
       fullName: "Asha Rao",
       email: "asha@example.com",
       company: "Acme Ltd",
-      city: "Chennai",
+      city: "Bengaluru",
       event: "builders-cafe",
       completedSignup: true,
       foundInSegment: false,
@@ -214,7 +213,7 @@ describe("full attendee journey through the webhooks", () => {
     expect(p.inbox.some((m) => m.includes("Question 1 of 3"))).toBe(true);
   });
 
-  test("no email code is sent: the chat asks for email, company, then city", async () => {
+  test("no email code is sent: the chat asks for email and company, never the city", async () => {
     const p = new Phone("+919800000002");
     await p.say("Hi");
     await p.say("Asha");
@@ -229,10 +228,14 @@ describe("full attendee journey through the webhooks", () => {
     await p.say("   ");
     expect(p.record.stage).toBe("ASK_COMPANY");
     await p.say("Acme   Ltd");
-    expect(p.record.company).toBe("Acme Ltd");
-    expect(p.last).toBe("Which city are you in?");
-    await p.say("Chennai");
-    expect(p.record).toMatchObject({ city: "Chennai", completedSignup: true, stage: "QUIZ" });
+    // The event is only in Bengaluru: no city question, the city is filled in.
+    expect(p.inbox.some((m) => m.includes("Which city"))).toBe(false);
+    expect(p.record).toMatchObject({
+      company: "Acme Ltd",
+      city: "Bengaluru",
+      completedSignup: true,
+      stage: "QUIZ",
+    });
   });
 
   test("someone found in Segment is blocked and never reaches the quiz", async () => {
