@@ -40,6 +40,8 @@ IMAGE_TAG="${IMAGE_TAG:-$(date +%Y%m%d%H%M%S)}"
 ENV_FILE="${ENV_FILE:-.env.azure.local}"
 HEALTH_WAIT_SECONDS="${HEALTH_WAIT_SECONDS:-420}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# The Windows az.exe cannot read Git Bash paths like /c/Users/...; convert when cygpath exists.
+winpath() { if command -v cygpath >/dev/null 2>&1; then cygpath -w "$1"; else printf %s "$1"; fi; }
 # shellcheck source=scripts/load-env.sh
 source "$HERE/scripts/load-env.sh"
 
@@ -242,7 +244,7 @@ ACR_SERVER="$(azv acr show -n "$AZURE_ACR_NAME" -g "$ACR_RG" --query loginServer
 [[ -n "$ACR_SERVER" ]] || die "Could not read the registry's address."
 
 say "Building the image in Azure (a few minutes)"
-az acr build --registry "$AZURE_ACR_NAME" --image "$IMAGE_NAME:$IMAGE_TAG" "$HERE"
+az acr build --registry "$AZURE_ACR_NAME" --image "$IMAGE_NAME:$IMAGE_TAG" "$(winpath "$HERE")"
 
 DIGEST="$(azv acr repository show -n "$AZURE_ACR_NAME" --image "$IMAGE_NAME:$IMAGE_TAG" --query digest -o tsv)"
 [[ -n "$DIGEST" ]] || die "Could not read the image digest."
@@ -274,7 +276,7 @@ process.stdout.write(JSON.stringify(out));
 
 say "Applying app settings (names only are shown, never values)"
 az webapp config appsettings set -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" \
-  --settings "@$SETTINGS_FILE" -o none
+  --settings "@$(winpath "$SETTINGS_FILE")" -o none
 
 say "Pointing the Web App at the new image"
 az webapp config set -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" \
