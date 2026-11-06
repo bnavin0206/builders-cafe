@@ -25,7 +25,8 @@
 # plan is shared with whatever else runs on it; it is never changed. Settings are
 # added or replaced by name; every other setting on the Web App is left alone.
 # No secret value is ever printed.
-set -euo pipefail
+set -Eeuo pipefail
+trap 'rc=$?; echo "ERROR: the script stopped at line $LINENO (exit code $rc) while running: $BASH_COMMAND" >&2' ERR
 
 MODE="${1:---plan}"
 ASSUME_YES="no"
@@ -64,8 +65,20 @@ ACR_RG="${AZURE_ACR_RESOURCE_GROUP:-$AZURE_RESOURCE_GROUP}"
 command -v az >/dev/null 2>&1 || die "The Azure CLI (az) is not installed or not on the path."
 command -v node >/dev/null 2>&1 || die "Node.js is needed (it builds the settings file safely)."
 
-# az on Windows prints Windows line endings; strip them from every answer.
-azv() { az "$@" 2>/dev/null | tr -d '\r'; }
+# az on Windows prints Windows line endings; strip them. If az fails, say why on
+# stderr (the first lines of what az said) and return failure to the caller.
+azv() {
+  local out err rc=0
+  err="$(mktemp)"
+  out="$(az "$@" 2>"$err")" || rc=$?
+  if (( rc != 0 )); then
+    echo "az $1 $2 failed: $(head -c 400 "$err" | tr -d '\r' | tr '\n' ' ')" >&2
+    rm -f -- "$err"
+    return 1
+  fi
+  rm -f -- "$err"
+  printf '%s\n' "$out" | tr -d '\r'
+}
 
 if ! az account show >/dev/null 2>&1; then
   die "You are not signed in to Azure. Run: az login"
@@ -101,30 +114,46 @@ rm -f -- "/tmp/deploy-webapp-check.$$"
 say "Settings file $ENV_FILE: complete."
 
 # ---- look at the Web App (read-only) ------------------------------------------
-APP_JSON="$(az webapp show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" \
+say "Reading the Web App $AZURE_WEBAPP_NAME ..."
+APP_JSON="$(azv webapp show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" \
   --query '{loc:location, reserved:reserved, state:state, host:defaultHostName, plan:appServicePlanId, fx:siteConfig.linuxFxVersion, alwaysOn:siteConfig.alwaysOn, https:httpsOnly}' \
-  -o json 2>/dev/null | tr -d '\r')" || true
-[[ -n "$APP_JSON" ]] || die "Cannot find Web App '$AZURE_WEBAPP_NAME' in resource group '$AZURE_RESOURCE_GROUP'. Check the names, and that you are signed in to the right subscription."
+  -o json)" || die "Cannot read Web App '$AZURE_WEBAPP_NAME' in resource group '$AZURE_RESOURCE_GROUP' (the reason is above). Check the names, and that you are signed in to the right subscription."
+[[ -n "$APP_JSON" ]] || die "Azure returned nothing for Web App '$AZURE_WEBAPP_NAME'."
 
-jget() { printf '%s' "$APP_JSON" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const v=JSON.parse(s)[process.argv[1]];process.stdout.write(v===null||v===undefined?"":String(v))})' "$1"; }
+# Pick one field out of a JSON answer; stop with a clear message if it is not JSON.
+jfield() { printf '%s' "$1" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let o;try{o=JSON.parse(s)}catch(e){process.exit(3)}const v=o[process.argv[1]];process.stdout.write(v===null||v===undefined?"":String(v))})' "$2"; }
+jget() { jfield "$APP_JSON" "$1" || die "Could not read the Web App details from Azure's answer (it was not the JSON expected)."; }
 LOCATION="$(jget loc)"; RESERVED="$(jget reserved)"; HOST="$(jget host)"; PLAN_ID="$(jget plan)"
 CURRENT_FX="$(jget fx)"; ALWAYS_ON="$(jget alwaysOn)"; HTTPS_ONLY="$(jget https)"
 
 [[ "$RESERVED" == "true" ]] || die "This Web App is not on a Linux plan. The app runs as a Linux container, so it needs a Linux plan."
 
 PLAN_NAME="${PLAN_ID##*/}"
-PLAN_JSON="$(az appservice plan show --ids "$PLAN_ID" \
-  --query '{sku:sku.name, tier:sku.tier, workers:sku.capacity}' -o json 2>/dev/null | tr -d '\r')" || true
-pget() { printf '%s' "$PLAN_JSON" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const v=JSON.parse(s)[process.argv[1]];process.stdout.write(v===null||v===undefined?"":String(v))})' "$1"; }
+say "Reading the App Service plan $PLAN_NAME ..."
+PLAN_JSON="$(azv appservice plan show --ids "$PLAN_ID" \
+  --query '{sku:sku.name, tier:sku.tier, workers:sku.capacity}' -o json)" \
+  || die "Cannot read the App Service plan '$PLAN_NAME' (the reason is above)."
+pget() { jfield "$PLAN_JSON" "$1" || die "Could not read the plan details from Azure's answer."; }
 PLAN_SKU="$(pget sku)"; PLAN_TIER="$(pget tier)"; PLAN_WORKERS="$(pget workers)"
 case "$PLAN_TIER" in
   Free|Shared|Dynamic) die "The plan '$PLAN_NAME' is $PLAN_TIER, which cannot stay always on. Use a Basic plan or higher." ;;
 esac
 
-OTHER_APPS="$(azv webapp list -g "$AZURE_RESOURCE_GROUP" \
-  --query "[?contains(appServicePlanId, '$PLAN_NAME') && name!='$AZURE_WEBAPP_NAME'].name" -o tsv | tr '\n' ' ')"
-EXISTING_SETTINGS="$(azv webapp config appsettings list -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" \
-  --query '[].name' -o tsv | tr '\n' ' ')"
+# Informational only: if either read fails the plan still goes on and says so.
+# The query has no special characters, because az.cmd on Windows mangles && and !.
+say "Listing the other apps in the resource group (names only) ..."
+OTHER_APPS=""
+if APPS_RAW="$(azv webapp list -g "$AZURE_RESOURCE_GROUP" --query '[].[name,appServicePlanId]' -o tsv)"; then
+  while IFS=$'\t' read -r app_name app_plan; do
+    [[ -n "$app_name" && "$app_name" != "$AZURE_WEBAPP_NAME" && "${app_plan##*/}" == "$PLAN_NAME" ]] && OTHER_APPS+="$app_name "
+  done <<< "$APPS_RAW"
+else
+  OTHER_APPS="(could not be read, see the message above)"
+fi
+say "Reading the Web App's existing setting names ..."
+if ! EXISTING_SETTINGS="$(azv webapp config appsettings list -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" --query '[].name' -o tsv | tr '\n' ' ')"; then
+  EXISTING_SETTINGS="(could not be read, see the message above)"
+fi
 
 # Registry: exists here, free to create, or the name is taken elsewhere.
 ACR_STATE="missing"
@@ -135,7 +164,9 @@ fi
 if az acr show -n "$AZURE_ACR_NAME" -g "$ACR_RG" >/dev/null 2>&1; then
   ACR_STATE="exists"
 else
-  AVAILABLE="$(azv acr check-name --name "$AZURE_ACR_NAME" --query nameAvailable -o tsv)"
+  say "Checking that the registry name $AZURE_ACR_NAME is free ..."
+  AVAILABLE="$(azv acr check-name --name "$AZURE_ACR_NAME" --query nameAvailable -o tsv)" \
+    || die "Could not check the registry name (the reason is above)."
   [[ "$AVAILABLE" == "true" ]] || die "The registry name '$AZURE_ACR_NAME' is already taken (registry names are unique worldwide). Choose another AZURE_ACR_NAME."
 fi
 
