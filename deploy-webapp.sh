@@ -26,6 +26,8 @@
 # added or replaced by name; every other setting on the Web App is left alone.
 # No secret value is ever printed.
 set -Eeuo pipefail
+# Git Bash on Windows rewrites arguments that start with / into C:/Program Files/Git/...; turn that off.
+export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'
 trap 'rc=$?; echo "ERROR: the script stopped at line $LINENO (exit code $rc) while running: $BASH_COMMAND" >&2' ERR
 
 MODE="${1:---plan}"
@@ -131,8 +133,10 @@ CURRENT_FX="$(jget fx)"; ALWAYS_ON="$(jget alwaysOn)"; HTTPS_ONLY="$(jget https)
 [[ "$RESERVED" == "true" ]] || die "This Web App is not on a Linux plan. The app runs as a Linux container, so it needs a Linux plan."
 
 PLAN_NAME="${PLAN_ID##*/}"
+PLAN_RG="$(sed -n 's#.*/[Rr]esource[Gg]roups/\([^/]*\)/.*#\1#p' <<< "$PLAN_ID")"
+[[ -n "$PLAN_RG" ]] || PLAN_RG="$AZURE_RESOURCE_GROUP"
 say "Reading the App Service plan $PLAN_NAME ..."
-PLAN_JSON="$(azv appservice plan show --ids "$PLAN_ID" \
+PLAN_JSON="$(azv appservice plan show -n "$PLAN_NAME" -g "$PLAN_RG" \
   --query '{sku:sku.name, tier:sku.tier, workers:sku.capacity}' -o json)" \
   || die "Cannot read the App Service plan '$PLAN_NAME' (the reason is above)."
 pget() { jfield "$PLAN_JSON" "$1" || die "Could not read the plan details from Azure's answer."; }
