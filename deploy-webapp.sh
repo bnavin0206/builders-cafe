@@ -116,7 +116,7 @@ say "Settings file $ENV_FILE: complete."
 # ---- look at the Web App (read-only) ------------------------------------------
 say "Reading the Web App $AZURE_WEBAPP_NAME ..."
 APP_JSON="$(azv webapp show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" \
-  --query '{loc:location, reserved:reserved, state:state, host:defaultHostName, plan:appServicePlanId, fx:siteConfig.linuxFxVersion, alwaysOn:siteConfig.alwaysOn, https:httpsOnly}' \
+  --query '{loc:location, reserved:reserved, state:state, host:defaultHostName, plan:serverFarmId, plan2:appServicePlanId, fx:siteConfig.linuxFxVersion, alwaysOn:siteConfig.alwaysOn, https:httpsOnly}' \
   -o json)" || die "Cannot read Web App '$AZURE_WEBAPP_NAME' in resource group '$AZURE_RESOURCE_GROUP' (the reason is above). Check the names, and that you are signed in to the right subscription."
 [[ -n "$APP_JSON" ]] || die "Azure returned nothing for Web App '$AZURE_WEBAPP_NAME'."
 
@@ -124,6 +124,8 @@ APP_JSON="$(azv webapp show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" \
 jfield() { printf '%s' "$1" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let o;try{o=JSON.parse(s)}catch(e){process.exit(3)}const v=o[process.argv[1]];process.stdout.write(v===null||v===undefined?"":String(v))})' "$2"; }
 jget() { jfield "$APP_JSON" "$1" || die "Could not read the Web App details from Azure's answer (it was not the JSON expected)."; }
 LOCATION="$(jget loc)"; RESERVED="$(jget reserved)"; HOST="$(jget host)"; PLAN_ID="$(jget plan)"
+[[ -n "$PLAN_ID" ]] || PLAN_ID="$(jget plan2)"
+[[ -n "$PLAN_ID" ]] || die "Could not find which App Service plan this Web App runs on, so the plan's size cannot be checked. Nothing was changed."
 CURRENT_FX="$(jget fx)"; ALWAYS_ON="$(jget alwaysOn)"; HTTPS_ONLY="$(jget https)"
 
 [[ "$RESERVED" == "true" ]] || die "This Web App is not on a Linux plan. The app runs as a Linux container, so it needs a Linux plan."
@@ -135,6 +137,7 @@ PLAN_JSON="$(azv appservice plan show --ids "$PLAN_ID" \
   || die "Cannot read the App Service plan '$PLAN_NAME' (the reason is above)."
 pget() { jfield "$PLAN_JSON" "$1" || die "Could not read the plan details from Azure's answer."; }
 PLAN_SKU="$(pget sku)"; PLAN_TIER="$(pget tier)"; PLAN_WORKERS="$(pget workers)"
+[[ -n "$PLAN_SKU" && -n "$PLAN_TIER" ]] || die "Could not read the size of the App Service plan '$PLAN_NAME', so it cannot be checked for Always On. Nothing was changed."
 case "$PLAN_TIER" in
   Free|Shared|Dynamic) die "The plan '$PLAN_NAME' is $PLAN_TIER, which cannot stay always on. Use a Basic plan or higher." ;;
 esac
@@ -143,10 +146,12 @@ esac
 # The query has no special characters, because az.cmd on Windows mangles && and !.
 say "Listing the other apps in the resource group (names only) ..."
 OTHER_APPS=""
-if APPS_RAW="$(azv webapp list -g "$AZURE_RESOURCE_GROUP" --query '[].[name,appServicePlanId]' -o tsv)"; then
-  while IFS=$'\t' read -r app_name app_plan; do
+if APPS_RAW="$(azv webapp list -g "$AZURE_RESOURCE_GROUP" --query '[].[name,serverFarmId,appServicePlanId]' -o tsv)"; then
+  while IFS=$'\t' read -r app_name app_plan app_plan2; do
+    [[ -z "$app_plan" || "$app_plan" == "None" ]] && app_plan="$app_plan2"
     [[ -n "$app_name" && "$app_name" != "$AZURE_WEBAPP_NAME" && "${app_plan##*/}" == "$PLAN_NAME" ]] && OTHER_APPS+="$app_name "
   done <<< "$APPS_RAW"
+  [[ -n "$OTHER_APPS" ]] || OTHER_APPS="none"
 else
   OTHER_APPS="(could not be read, see the message above)"
 fi
