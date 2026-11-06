@@ -123,7 +123,9 @@ export default function OrderForm({
           <SelectValue placeholder="What do you want to order?" />
         </SelectTrigger>
         <SelectContent>
-          {selection.items.map((item) => (
+          {selection.items
+            .filter((item) => item.available !== false)
+            .map((item) => (
             <SelectItem key={item.title} value={item.title}>
               {item.title}
             </SelectItem>

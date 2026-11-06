@@ -330,8 +330,10 @@ async function failQuiz(
 /** Free mode: free coffees only. Paid mode: priced coffees only. */
 /** The free menu is the free coffees; the paid menu is every priced item. */
 function menuChoices(event: Event, mode: "free" | "paid"): MenuItem[] {
-  if (mode === "paid") return event.selection.items.filter((i) => !isFree(i));
-  return itemsIn(event.selection.items, "coffee").filter(isFree);
+  // An item the admin switched off for today is not offered.
+  const offered = event.selection.items.filter((i) => i.available !== false);
+  if (mode === "paid") return offered.filter((i) => !isFree(i));
+  return itemsIn(offered, "coffee").filter(isFree);
 }
 
 /** Groups of a long menu, by description (Hot, Cold...), in order of first appearance. */

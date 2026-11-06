@@ -44,6 +44,10 @@ export function validateSelection(selection: unknown): string | null {
       return `The description of "${name}" must be at most ${DESCRIPTION_MAX} characters.`;
     }
 
+    if (item.available !== undefined && typeof item.available !== "boolean") {
+      return `"${name}" has an invalid on/off setting.`;
+    }
+
     const price = item.price ?? 0;
     if (
       typeof price !== "number" ||

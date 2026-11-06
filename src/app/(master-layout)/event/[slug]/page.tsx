@@ -637,9 +637,40 @@ function EventPage({ params }: { params: Promise<{ slug: string }> }) {
                   <AlertDescription>{menuProblem}</AlertDescription>
                 </Alert>
               )}
+              <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <div>
+                  <p className="text-sm font-semibold">Today&apos;s menu: switch items on or off</p>
+                  <p className="text-xs text-gray-600">
+                    An item that is off is hidden from customers on WhatsApp straight away. Orders already placed are not affected.
+                    Switch it back on any time.
+                  </p>
+                </div>
+                {Array.from(new Set(internalEvent.selection.items.map((i) => i.description || "Other"))).map((group) => (
+                  <div key={group} className="space-y-1">
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{group}</p>
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-1">
+                      {internalEvent.selection.items.map((item, index) =>
+                        (item.description || "Other") !== group ? null : (
+                          <div key={`avail-${index}`} className="flex items-center justify-between gap-3 py-1">
+                            <span className={`text-sm ${item.available === false ? "text-gray-400 line-through" : ""}`}>
+                              {item.title}
+                              {(item.price ?? 0) === 0 ? " (free)" : ` · ₹${item.price}`}
+                            </span>
+                            <Switch
+                              aria-label={`${item.title} available today`}
+                              checked={item.available !== false}
+                              onCheckedChange={(on) => updateMenuItem(index, { available: on })}
+                            />
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {internalEvent.selection.items.map((item, index) => (
-                  <div key={item.originalTitle ?? item.shortTitle} className="space-y-3 rounded-lg border border-gray-100 bg-gray-50 p-4">
+                  <div key={item.originalTitle ?? item.shortTitle} className={`space-y-3 rounded-lg border border-gray-100 bg-gray-50 p-4 ${item.available === false ? "opacity-50" : ""}`}>
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">
                         {item.originalTitle ?? item.shortTitle}

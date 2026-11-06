@@ -26,6 +26,12 @@ describe("validateSelection", () => {
     ).toBeNull();
   });
 
+  test("the on/off switch must be true or false", () => {
+    expect(validateSelection(sel([item({ available: false })]))).toBeNull();
+    expect(validateSelection(sel([item({ available: true })]))).toBeNull();
+    expect(validateSelection(sel([item({ available: "no" as unknown as boolean })]))).toContain("on/off");
+  });
+
   test("an empty menu is allowed", () => {
     expect(validateSelection(sel([], []))).toBeNull();
   });

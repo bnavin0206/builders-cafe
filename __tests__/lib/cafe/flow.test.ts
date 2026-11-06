@@ -1239,6 +1239,29 @@ describe("the real menu", () => {
     expect(s.links[0]!.amountPaise).toBe(10000);
   });
 
+  test("an item switched off for the day is not offered, and comes back when switched on", async () => {
+    const e = realEvent();
+    e.selection.items = e.selection.items.map((i) =>
+      i.title === "Mint Sandwich" || (i.title === "Cappuccino" && !i.price) ? { ...i, available: false } : i,
+    );
+    const s = new Sim(e);
+    s.enableLists();
+    await s.passQuiz();
+    expect(s.lastList!.rows.map((r) => r.title)).toEqual(["Cafe Latte", "Masala Chai", "Tapri Coffee"]);
+
+    const t = new Sim(e);
+    t.enableLists();
+    await t.failQuiz();
+    await t.say("Sandwich ▸");
+    const titles = t.lastList!.rows.map((r) => r.title);
+    expect(titles).not.toContain("Mint Sandwich");
+    expect(titles).toContain("Cheese Sandwich");
+    expect(titles).toContain("Chicken Sandwich 1");
+    // Typing the name of a switched-off item does not order it.
+    await t.say("Mint Sandwich");
+    expect(t.record.cartItems ?? []).toEqual([]);
+  });
+
   test("text mode has no pages: the whole menu is numbered", async () => {
     const s = new Sim(realEvent());
     await s.failQuiz();

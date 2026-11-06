@@ -30,7 +30,7 @@ function ConfigPage() {
   ) as [Configuration, Function, boolean];
 
   const allModes = configInitialized
-    ? Object.values(modes).filter((m) => config?.menus?.[m]?.items?.length > 0)
+    ? Object.values(modes).filter((m) => m === modes.barista && config?.menus?.[m]?.items?.length > 0)
     : [];
 
   return (

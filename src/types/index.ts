@@ -46,6 +46,9 @@ export interface MenuItem {
   // menus from the original app keep working.
   price?: number;
   category?: MenuCategory;
+  // false hides the item from customers for now (the daily on/off switch in
+  // the dashboard). Unset means available, so older events keep working.
+  available?: boolean;
 }
 
 export type Menus = {

@@ -54,7 +54,9 @@ export function MenuSelect({
   onSelectionChange: (newSelection: Selection) => void;
 }) {
   const { toast } = useToast();
-  const allModes = Object.keys(menus) as modes[];
+  // Builder's Cafe has one menu. The original app's other menus (smoothie, tea,
+  // waffles, cocktail) are not offered.
+  const allModes = (Object.keys(menus) as modes[]).filter((m) => m === modes.barista);
   if (allModes.length === 0) return <div>No menus found</div>;
 
   const activeMode = selection.mode ?? allModes[0];
