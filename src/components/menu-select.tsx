@@ -1,6 +1,7 @@
 import { Check } from "lucide-react";
 import MenuItem from "./menu-item";
-import type { MenuItem as MenuItemInterface, Menus, modes, Selection } from "@/types";
+import { modes } from "@/types";
+import type { MenuItem as MenuItemInterface, Menus, Selection } from "@/types";
 import { useToast } from "./ui/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { Badge } from "./ui/badge";
