@@ -586,7 +586,8 @@ function EventPage({ params }: { params: Promise<{ slug: string }> }) {
         )}
       </Card>
 
-      {/* Menu */}
+      {/* Menu picker: only when creating an event. A live event is edited below, with the daily on/off switches. */}
+      {isNewEvent && (
       <Card>
         <CardHeader
           className={`flex flex-row items-center justify-between ${!isNewEvent ? "cursor-pointer" : ""}`}
@@ -613,6 +614,7 @@ function EventPage({ params }: { params: Promise<{ slug: string }> }) {
           </CardContent>
         )}
       </Card>
+      )}
 
       {/* Customize Menu Items: names, prices, add and remove */}
       {!isNewEvent && (
