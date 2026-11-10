@@ -8,8 +8,9 @@ import {
 } from "@/lib/cafe/menu-board";
 import "./menu-board.css";
 
+// Twilio Sans loads from twilio-fonts.css; these two are only the fallback if it cannot.
 const FONTS =
-  "https://fonts.googleapis.com/css2?family=Yatra+One&family=Hanken+Grotesk:wght@500;700;800&family=JetBrains+Mono:wght@700&display=swap";
+  "https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@500;700;800&family=JetBrains+Mono:wght@700&display=swap";
 
 function Mark({ veg }: { veg: boolean }) {
   return <i className={`mb-mark ${veg ? "mb-mark--veg" : "mb-mark--non"}`} role="img" aria-label={veg ? "Veg" : "Non-veg"} />;
@@ -50,7 +51,7 @@ function Panel({ groups }: { groups: MenuGroup[] }) {
   return (
     <section className="mb-panel">
       <div className={`mb-crest${crestSize(title)}`}>
-        <h2>{title}</h2>
+        <h2 style={{ "--n": title.length } as CSSProperties}>{title}</h2>
       </div>
       {groups.map((g) => (
         <Section key={g.name} group={g} />

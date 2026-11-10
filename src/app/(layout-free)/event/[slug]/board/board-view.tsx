@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import type { Board, BoardOrder } from "@/lib/cafe/board";
 import "./board.css";
 
@@ -88,7 +88,7 @@ function Panel({
         <ol ref={list} className="tokens" aria-live={kind === "ready" ? "polite" : "off"}>
           {orders.map((o) => (
             <li key={o.no} className={`token${fresh.has(o.no) ? " token--new" : ""}`}>
-              <span className="token__no">
+              <span className="token__no" style={{ "--n": String(o.no).length } as CSSProperties}>
                 <i>#</i>
                 {o.no}
               </span>

@@ -65,6 +65,22 @@ items (the drink plus paid extras, never add-ons) and the time; never a name,
 phone, email or payment detail (`src/lib/cafe/board.ts`). Press F11 on the TV
 browser for full screen. Design samples are in `docs/order-board/`.
 
+### Fonts
+
+The whole app (dashboard, order board, menu board) uses the Twilio brand fonts
+Twilio Sans Display (headings, big numbers), Twilio Sans Text (body) and Twilio
+Sans Mono (small labels, times). The `@font-face` rules are in
+`src/app/twilio-fonts.css` and load from the client's font host
+(assets.swoogo.com); each has `font-display: swap`, so text shows at once in the
+fallback font (Inter in the dashboard; the boards' original fonts on the
+boards) and switches when the font arrives. A browser only uses a font from
+another address if that host allows it (CORS), so if the host refuses, the
+fallback fonts stay: open the browser's developer tools, Network tab, and look
+for the font files. To avoid depending on that host, put copies of the font
+files in `public/fonts/` and point the `src: url(...)` lines at them. The boards
+size their numbers and titles from the number of characters, so the wider
+Twilio Sans still fits.
+
 ### Twilio signature check
 
 Every WhatsApp message to `/webhooks/messaging` carries a Twilio signature.

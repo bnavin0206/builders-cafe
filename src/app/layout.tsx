@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import "./twilio-fonts.css";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+// Inter stays as the fallback behind Twilio Sans (see twilio-fonts.css).
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
   title: "Twilio Cafe",
@@ -17,7 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <link rel="shortcut icon" href="/favicon.ico" />
-      <body className={inter.className}>{children}</body>
+      <body className={inter.variable}>{children}</body>
     </html>
   );
 }

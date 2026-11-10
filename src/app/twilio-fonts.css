@@ -1,0 +1,131 @@
+/* Twilio Sans, the Twilio brand fonts (supplied by the client). They are loaded
+   from the client's font host, so each rule has `font-display: swap`: text shows
+   at once in the fallback font and switches when the font arrives. If the host
+   refuses the file, the fallback fonts below stay.
+   --font-display: headings and big numbers. --font-text: body text.
+   --font-mono: small labels and times. */
+@font-face {
+  font-family: 'Twilio Sans Display';
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+  src: url('https://assets.swoogo.com/custom-font/7071.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Twilio Sans Display';
+  font-weight: 800;
+  font-style: italic;
+  font-display: swap;
+  src: url('https://assets.swoogo.com/custom-font/7072.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Twilio Sans Display';
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url('https://assets.swoogo.com/custom-font/7068.otf') format('opentype');
+}
+@font-face {
+  font-family: 'Twilio Sans Display';
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url('https://assets.swoogo.com/custom-font/7079.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Twilio Sans Display';
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+  src: url('https://assets.swoogo.com/custom-font/7080.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Twilio Sans Text';
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+  src: url('https://assets.swoogo.com/custom-font/7098.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Twilio Sans Text';
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url('https://assets.swoogo.com/custom-font/7097.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Twilio Sans Text';
+  font-weight: 600;
+  font-style: italic;
+  font-display: swap;
+  src: url('https://assets.swoogo.com/custom-font/7110.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Twilio Sans Text';
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url('https://assets.swoogo.com/custom-font/7109.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Twilio Sans Text';
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url('https://assets.swoogo.com/custom-font/7105.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Twilio Sans Text';
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+  src: url('https://assets.swoogo.com/custom-font/7106.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Twilio Sans Text';
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url('https://assets.swoogo.com/custom-font/7107.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Twilio Sans Text';
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+  src: url('https://assets.swoogo.com/custom-font/7108.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Twilio Sans Mono';
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+  src: url('https://assets.swoogo.com/custom-font/7094.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Twilio Sans Mono';
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url('https://assets.swoogo.com/custom-font/7083.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Twilio Sans Mono';
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+  src: url('https://assets.swoogo.com/custom-font/7084.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Twilio Sans Mono';
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url('https://assets.swoogo.com/custom-font/7093.ttf') format('truetype');
+}
+
+:root {
+  --font-display: "Twilio Sans Display", var(--font-inter, ui-sans-serif), system-ui, sans-serif;
+  --font-text: "Twilio Sans Text", var(--font-inter, ui-sans-serif), system-ui, sans-serif;
+  --font-mono: "Twilio Sans Mono", ui-monospace, "SF Mono", Consolas, monospace;
+}
