@@ -1,6 +1,6 @@
 import { describe, test, expect } from "vitest";
 import menus from "@/config/menus";
-import { fitScale, layoutMenu, menuForBoard, panelTitle } from "@/lib/cafe/menu-board";
+import { fitDisplayScale, fitScale, layoutMenu, menuForBoard, panelTitle } from "@/lib/cafe/menu-board";
 import type { MenuItem } from "@/types";
 
 const it = (title: string, price: number, description = "Hot", over: Partial<MenuItem> = {}): MenuItem => ({
@@ -105,5 +105,27 @@ describe("fit", () => {
     const k = fitScale(l, "landscape");
     expect(k).toBeLessThan(1);
     expect(k).toBeGreaterThanOrEqual(0.5);
+  });
+});
+
+describe("fit on the menu and orders page", () => {
+  test("the 23-item menu fits at close to full size on both screens", () => {
+    const l = layoutMenu(menuForBoard(menus.barista.items));
+    expect(fitDisplayScale(l, "landscape")).toBeGreaterThanOrEqual(0.9);
+    expect(fitDisplayScale(l, "portrait")).toBeGreaterThanOrEqual(0.9);
+  });
+
+  test("a longer menu shrinks, and never below half size", () => {
+    const many = Array.from({ length: 40 }, (_, i) => it(`Item ${i}`, 100, i < 20 ? "Hot" : "Cold"));
+    const l = layoutMenu(menuForBoard(many));
+    for (const o of ["landscape", "portrait"] as const) {
+      const k = fitDisplayScale(l, o);
+      expect(k).toBeLessThan(0.9);
+      expect(k).toBeGreaterThanOrEqual(0.5);
+    }
+  });
+
+  test("an empty menu does not break it", () => {
+    expect(fitDisplayScale(layoutMenu([]), "landscape")).toBe(1);
   });
 });

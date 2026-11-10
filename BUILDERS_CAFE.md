@@ -81,6 +81,17 @@ files in `public/fonts/` and point the `src: url(...)` lines at them. The boards
 size their numbers and titles from the number of characters, so the wider
 Twilio Sans still fits.
 
+### Menu and orders on one page (display)
+
+`<PUBLIC_BASE_URL>/event/<slug>/display?key=<BOARD_KEY>` shows the live menu and
+the order status together, for a display of either shape. Wide screen: the menu
+on the left (a free-coffee strip with the "Scan to order" QR code, then the paid
+panels) and Ready, Preparing and Delivered on the right. Upright screen: the
+orders on top, then the menu. It uses the same two feeds as the order board and
+the menu board (orders every 3 seconds, the menu every 15), so those two pages
+are unchanged. Orders that do not fit a panel are hidden and counted as
+"+N more". Files are in `src/app/(layout-free)/event/[slug]/display/`.
+
 ### Twilio signature check
 
 Every WhatsApp message to `/webhooks/messaging` carries a Twilio signature.

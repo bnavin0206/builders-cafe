@@ -124,3 +124,23 @@ export function fitScale(layout: MenuLayout, orientation: "landscape" | "portrai
   }
   return Math.max(0.5, Math.round(k * 100) / 100);
 }
+
+/**
+ * How much to shrink the menu rows of the combined menu and orders page so the
+ * longest column still fits. Same idea as `fitScale`, with the numbers of that
+ * page (the menu shares the screen with the orders).
+ */
+export function fitDisplayScale(layout: MenuLayout, orientation: "landscape" | "portrait"): number {
+  const rows = (g: MenuGroup[]) => g.reduce((n, x) => n + x.items.length, 0);
+  const land = orientation === "landscape";
+  // Height left for the paid panels, then per column: a fixed part (title,
+  // padding, lines under headings) plus a part that shrinks (rows, headings).
+  const avail = land ? 44 : 45;
+  const fixed = land ? 7.6 : 6;
+  const heading = land ? 3.2 : 3.4;
+  const row = land ? 2.9 : 3.3;
+  const cols = layout.columns.map(
+    (c) => (avail - fixed - c.length * 0.8) / Math.max(c.length * heading + rows(c) * row, 1),
+  );
+  return Math.max(0.5, Math.round(Math.min(1, ...cols) * 100) / 100);
+}
