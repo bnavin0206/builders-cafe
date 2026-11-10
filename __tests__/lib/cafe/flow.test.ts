@@ -1269,87 +1269,80 @@ describe("the real menu", () => {
     };
     return e;
   };
+  const GROUPS = ["Hot", "Sandwich", "Savoury", "Pastry"];
 
   test("a winner picks from four free drinks", async () => {
     const s = new Sim(realEvent());
     s.enableLists();
     await s.passQuiz();
-    expect(s.lastList!.rows.map((r) => r.title)).toEqual([
-      "Cappuccino",
-      "Cafe Latte",
-      "Masala Chai",
-      "Tapri Coffee",
-    ]);
+    expect(s.lastList!.rows.map((r) => r.title)).toEqual(["Cappuccino", "Americano", "Masala Chai", "Espresso"]);
     expect(s.lastList!.rows[0]).toMatchObject({ description: "FREE · Hot" });
   });
 
-  test("the paid list opens on the Hot page, with a row for Cold", async () => {
+  test("the paid list opens on the Hot page, with a row for each other group", async () => {
     const s = new Sim(realEvent());
     s.enableLists();
     await s.failQuiz();
     const { rows, prompt } = s.lastList!;
     expect(rows.map((r) => r.title)).toEqual([
-      "Espresso",
-      "Cappuccino",
+      "Cafe Mocha",
       "Cafe Latte",
-      "Tapri Coffee",
-      "Masala Chai",
       "Hot Chocolate",
-      "Cold ▸",
+      "Elachi Chai",
       "Sandwich ▸",
       "Savoury ▸",
       "Pastry ▸",
     ]);
     expect(rows[0]).toMatchObject({ id: "1", description: "₹80 · Hot" });
-    expect(rows[6]).toMatchObject({ id: "page:1", description: "Show the Cold items" });
-    expect(rows).toHaveLength(10);
+    expect(rows[4]).toMatchObject({ id: "page:1", description: "Show the Sandwich items" });
     expect(rows.some((r) => r.id === "0")).toBe(false); // nothing picked yet
     expect(prompt).toContain("Showing: Hot");
     expect(rows.every((r) => r.title.length <= 24 && r.description.length <= 72)).toBe(true);
   });
 
-  test("tapping Cold shows the cold drinks and adds nothing", async () => {
+  test("tapping Sandwich shows the sandwiches and adds nothing", async () => {
     const s = new Sim(realEvent());
     s.enableLists();
     await s.failQuiz();
     await s.say("page:1");
     expect(s.record.cartItems ?? []).toEqual([]);
-    expect(s.record.cartGroup).toBe("Cold");
+    expect(s.record.cartGroup).toBe("Sandwich");
     expect(s.lastList!.rows.map((r) => r.title)).toEqual([
-      "Cold Coffee",
-      "Frappe Mocha",
-      "Cold Chocolate",
-      "Cold Americano",
+      "Chicken Sandwich 1",
+      "Chicken Sandwich 2",
+      "Chicken Sandwich 3",
+      "Mint Sandwich",
+      "Cheese Sandwich",
+      "Potato Sandwich",
       "Hot ▸",
-      "Sandwich ▸",
       "Savoury ▸",
       "Pastry ▸",
     ]);
-    expect(s.lastList!.prompt).toContain("Showing: Cold");
+    expect(s.lastList!.prompt).toContain("Showing: Sandwich");
     expect(s.record.stage).toBe(Stages.PICK_COFFEE);
   });
 
-  test("items from both pages go into one order, and the list has a Done row", async () => {
+  test("items from two pages go into one order, and the list has a Done row", async () => {
     const s = new Sim(realEvent());
     s.enableLists();
     await s.failQuiz();
     await s.say("page:1");
-    await s.say("4"); // Cold Coffee: stays on the Cold page
-    expect(s.record.cartItems).toEqual(["Cold Coffee"]);
-    expect(s.record.cartGroup).toBe("Cold");
-    expect(s.lastList!.prompt).toContain("So far: Cold Coffee");
-    expect(s.lastList!.prompt).toContain("Showing: Cold");
+    await s.say("8"); // Mint Sandwich: stays on the Sandwich page
+    expect(s.record.cartItems).toEqual(["Mint Sandwich"]);
+    expect(s.record.cartGroup).toBe("Sandwich");
+    expect(s.lastList!.prompt).toContain("So far: Mint Sandwich");
+    expect(s.lastList!.prompt).toContain("Showing: Sandwich");
     expect(s.lastList!.rows.at(-1)).toMatchObject({ id: "0", title: "Done" });
-    expect(s.lastList!.rows[4]).toMatchObject({ id: "page:0", title: "Hot ▸" });
-    expect(s.lastList!.rows).toHaveLength(9);
+    expect(s.lastList!.rows[6]).toMatchObject({ id: "page:0", title: "Hot ▸" });
+    expect(s.lastList!.rows).toHaveLength(10);
 
     await s.say("page:0"); // back to Hot, the cart is kept
-    expect(s.lastList!.prompt).toContain("So far: Cold Coffee");
+    expect(s.lastList!.prompt).toContain("So far: Mint Sandwich");
     expect(s.lastList!.rows.at(-1)).toMatchObject({ id: "0", title: "Done" });
-    await s.say("1"); // Espresso
-    expect(s.record.cartItems).toEqual(["Cold Coffee", "Espresso"]);
-    await s.say("1"); // another Espresso
-    expect(s.lastList!.prompt).toContain("So far: Cold Coffee, Espresso ×2");
+    await s.say("1"); // Cafe Mocha
+    expect(s.record.cartItems).toEqual(["Mint Sandwich", "Cafe Mocha"]);
+    await s.say("1"); // another Cafe Mocha
+    expect(s.lastList!.prompt).toContain("So far: Mint Sandwich, Cafe Mocha ×2");
 
     await s.say("0"); // Done
     expect(s.record.stage).toBe(Stages.PICK_ADDONS);
@@ -1362,21 +1355,22 @@ describe("the real menu", () => {
     const s = new Sim(realEvent());
     s.enableLists();
     await s.failQuiz();
-    await s.say("cold");
-    expect(s.record.cartGroup).toBe("Cold");
-    expect(s.lastList!.rows.map((r) => r.title)).toContain("Cold Americano");
+    await s.say("sandwich");
+    expect(s.record.cartGroup).toBe("Sandwich");
+    expect(s.lastList!.rows.map((r) => r.title)).toContain("Potato Sandwich");
   });
 
-  test("a row that arrives as its title works: Cold ▸ switches the page", async () => {
+  test("a row that arrives as its title works: Savoury ▸ switches the page", async () => {
     const s = new Sim(realEvent());
     s.enableLists();
     await s.failQuiz();
-    await s.say("Cold ▸");
-    expect(s.record.cartGroup).toBe("Cold");
-    await s.say("Frappe Mocha"); // an item by title
-    expect(s.record.cartItems).toEqual(["Frappe Mocha"]);
+    await s.say("Savoury ▸");
+    expect(s.record.cartGroup).toBe("Savoury");
+    await s.say("Veg Puff"); // an item by title
+    expect(s.record.cartItems).toEqual(["Veg Puff"]);
     await s.say("Hot ▸");
     expect(s.record.cartGroup).toBe("Hot");
+    await s.say("Cafe Latte");
     await s.say("Done");
     expect(s.record.stage).toBe(Stages.PICK_ADDONS);
   });
@@ -1385,7 +1379,7 @@ describe("the real menu", () => {
     const s = new Sim(realEvent());
     s.enableLists();
     await s.failQuiz();
-    await s.say("1, 4"); // Espresso and Cold Coffee in one reply
+    await s.say("1, 5"); // Cafe Mocha and Chicken Sandwich 1 in one reply
     expect(s.record.stage).toBe(Stages.PICK_ADDONS);
     await s.say("0");
     expect(s.links[0]!.amountPaise).toBe(18000);
@@ -1405,35 +1399,36 @@ describe("the real menu", () => {
     await s.say("1"); // free Cappuccino
     await s.say("0"); // no add-ons
     expect(s.lastList!.rows.at(-1)).toMatchObject({ id: "0", title: "No thanks" });
-    expect(s.lastList!.rows.at(-2)).toMatchObject({ id: "page:3", title: "Savoury ▸" });
+    expect(s.lastList!.rows.at(-2)).toMatchObject({ id: "page:3", title: "Pastry ▸" });
     expect(s.lastList!.prompt).toContain("Showing: Hot");
     await s.say("page:1");
     expect(s.lastList!.rows.map((r) => r.title)).toEqual([
-      "Cold Coffee",
-      "Frappe Mocha",
-      "Cold Chocolate",
-      "Cold Americano",
+      "Chicken Sandwich 1",
+      "Chicken Sandwich 2",
+      "Chicken Sandwich 3",
+      "Mint Sandwich",
+      "Cheese Sandwich",
+      "Potato Sandwich",
       "Hot ▸",
-      "Sandwich ▸",
       "Savoury ▸",
       "Pastry ▸",
       "No thanks",
     ]);
   });
 
-  test("a winner picks a cold extra from the second page and finishes with Done", async () => {
+  test("a winner picks a food extra from the second page and finishes with Done", async () => {
     const s = new Sim(realEvent());
     s.enableLists();
     await s.passQuiz();
     await s.say("1");
     await s.say("0");
     await s.say("page:1");
-    await s.say("9"); // Cold Chocolate
-    expect(s.record.cartItems).toEqual(["Cold Chocolate"]);
+    await s.say("8"); // Mint Sandwich
+    expect(s.record.cartItems).toEqual(["Mint Sandwich"]);
     expect(s.lastList!.rows.at(-1)).toMatchObject({ id: "0", title: "Done" });
     await s.say("0");
     expect(s.links[0]!.amountPaise).toBe(10000);
-    expect(s.record.pendingOrder).toMatchObject({ coffee: "Cappuccino", items: ["Cold Chocolate"] });
+    expect(s.record.pendingOrder).toMatchObject({ coffee: "Cappuccino", items: ["Mint Sandwich"] });
   });
 
   test("every page fits one WhatsApp list and every group can be reached", async () => {
@@ -1441,21 +1436,21 @@ describe("the real menu", () => {
       const s = new Sim(realEvent());
       s.enableLists();
       await s.failQuiz();
-      if (first === "with cart") await s.say("1"); // Espresso: the list gains a Done row
+      if (first === "with cart") await s.say("1"); // Cafe Mocha: the list gains a Done row
       const seen = new Set<string>([s.record.cartGroup ?? "Hot"]);
       for (let tap = 0; tap < 8; tap++) {
         const rows = s.lastList!.rows;
         expect(rows.length).toBeLessThanOrEqual(10);
         // Tap the row for the group that comes next in the rotation.
-        const cur = ["Hot", "Cold", "Sandwich", "Savoury", "Pastry"].indexOf(s.record.cartGroup ?? "Hot");
-        const dist = (r: { id: string }) => (Number(r.id.slice(5)) - cur + 5) % 5;
+        const cur = GROUPS.indexOf(s.record.cartGroup ?? "Hot");
+        const dist = (r: { id: string }) => (Number(r.id.slice(5)) - cur + GROUPS.length) % GROUPS.length;
         const next = rows
           .filter((r) => r.id.startsWith("page:"))
           .sort((a, b) => dist(a) - dist(b))[0]!;
         await s.say(next.id);
         seen.add(s.record.cartGroup!);
       }
-      expect([...seen].sort()).toEqual(["Cold", "Hot", "Pastry", "Sandwich", "Savoury"]);
+      expect([...seen].sort()).toEqual([...GROUPS].sort());
     }
   });
 
@@ -1487,7 +1482,7 @@ describe("the real menu", () => {
     const s = new Sim(e);
     s.enableLists();
     await s.passQuiz();
-    expect(s.lastList!.rows.map((r) => r.title)).toEqual(["Cafe Latte", "Masala Chai", "Tapri Coffee"]);
+    expect(s.lastList!.rows.map((r) => r.title)).toEqual(["Americano", "Masala Chai", "Espresso"]);
 
     const t = new Sim(e);
     t.enableLists();
@@ -1505,9 +1500,9 @@ describe("the real menu", () => {
   test("text mode has no pages: the whole menu is numbered", async () => {
     const s = new Sim(realEvent());
     await s.failQuiz();
-    expect(s.last).toContain("1. Espresso (₹80)");
-    expect(s.last).toContain("10. Cold Americano (₹100)");
-    await s.say("cold"); // not a page in text mode
+    expect(s.last).toContain("1. Cafe Mocha (₹80)");
+    expect(s.last).toContain("19. Apple Pie (₹100)");
+    await s.say("sandwich"); // not a page in text mode
     expect(s.last).toContain("not on the menu");
   });
 
@@ -1530,11 +1525,16 @@ describe("the real menu", () => {
   });
 
   test("the same drink free and paid: each is found by its own price", async () => {
-    const s = new Sim(realEvent());
+    const e = realEvent();
+    e.selection.items = [
+      { title: "Cappuccino", shortTitle: "Cappuccino (Free)", description: "Hot", price: 0, category: "coffee" },
+      { title: "Cappuccino", shortTitle: "Cappuccino", description: "Hot", price: 80, category: "coffee" },
+    ];
+    const s = new Sim(e);
     await s.passQuiz();
     await s.say("1"); // free Cappuccino
     await s.say("0"); // no add-ons
-    await s.say("2"); // paid Cappuccino
+    await s.say("1"); // paid Cappuccino
     expect(s.links[0]!.amountPaise).toBe(8000); // only the paid one is charged
     expect(s.record.pendingOrder).toMatchObject({ coffee: "Cappuccino", items: ["Cappuccino"] });
     await s.pay();
@@ -1542,10 +1542,10 @@ describe("the real menu", () => {
     expect(s.record.freeCoffeesTaken).toBe(1);
   });
 
-  test("hot and cold drinks add up", async () => {
+  test("drinks and food add up", async () => {
     const s = new Sim(realEvent());
     await s.failQuiz();
-    await s.say("1, 4, 4"); // Espresso, Cold Coffee x2
+    await s.say("1, 5, 5"); // Cafe Mocha, Chicken Sandwich 1 x2
     await s.say("0");
     expect(s.links[0]!.amountPaise).toBe(28000); // 80 + 100 + 100
   });

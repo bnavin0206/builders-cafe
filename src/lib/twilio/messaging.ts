@@ -29,10 +29,28 @@ export async function getPossibleSenders() {
   const messagingService = await getMessagingService();
   const senders = await messagingService.phoneNumbers().list();
   const channelSenders = await messagingService.channelSenders().list();
+  // WhatsApp senders that are online in the account, even when they are not
+  // attached to the Messaging Service, so the dashboard can always pick them.
+  let whatsapp: string[] = [];
+  try {
+    const all = await twilioClient.messaging.v2.channelsSenders.list({ channel: "whatsapp" });
+    whatsapp = all
+      .filter((s) => String(s.status ?? "").startsWith("ONLINE"))
+      .map((s) => String(s.senderId ?? ""));
+  } catch (e) {
+    console.error("Could not list the account's WhatsApp senders", e);
+  }
   return [
-    senders.map((s) => s.phoneNumber),
-    channelSenders.map((cs) => cs.sender),
-  ].flat();
+    ...new Set(
+      [
+        senders.map((s) => s.phoneNumber),
+        channelSenders.map((cs) => cs.sender),
+        whatsapp,
+      ]
+        .flat()
+        .filter((s): s is string => Boolean(s)),
+    ),
+  ];
 }
 
 export async function sendMessage(

@@ -46,9 +46,9 @@ describe("menu for the board", () => {
 describe("layout", () => {
   test("free items get their own panel; paid groups keep menu order", () => {
     const l = layoutMenu(menuForBoard(menus.barista.items));
-    expect(l.free.map((i) => i.title)).toEqual(["Cappuccino", "Cafe Latte", "Masala Chai", "Tapri Coffee"]);
+    expect(l.free.map((i) => i.title)).toEqual(["Cappuccino", "Americano", "Masala Chai", "Espresso"]);
     const names = l.columns.flat().map((g) => g.name);
-    expect(names).toEqual(["Hot drinks", "Cold drinks", "Sandwiches", "Savoury", "Pastries"]);
+    expect(names).toEqual(["Hot drinks", "Sandwiches", "Savoury", "Pastries"]);
   });
 
   test("the two columns are balanced and never reorder groups", () => {
@@ -83,36 +83,20 @@ describe("layout", () => {
 
   test("a panel title joins its groups, and says '& more' when there are too many for the arch", () => {
     const l = layoutMenu(menuForBoard(menus.barista.items));
-    expect(panelTitle(l.columns[0])).toBe("Hot & Cold");
-    expect(panelTitle(l.columns[1])).toBe("Sandwiches & more");
+    expect(panelTitle(l.columns[0])).toBe("Hot & Sandwiches");
+    expect(panelTitle(l.columns[1])).toBe("Savoury & Pastries");
+    const three = layoutMenu(menuForBoard([it("A", 80, "Hot"), it("B", 80, "Cold"), it("C", 100, "Sandwich"), it("D", 100, "Pastry"), it("E", 100, "Savoury"), it("F", 100, "Savoury")]));
+    expect(panelTitle(three.columns.flat())).toBe("Hot & more");
     const small = layoutMenu(menuForBoard([it("A", 80, "Hot"), it("B", 100, "Savoury")]));
     expect(panelTitle([...small.columns[0], ...small.columns[1]])).toBe("Hot & Savoury");
   });
 });
 
 describe("fit", () => {
-  test("the current menu (25 paid items) is shrunk a little to fit, never below 50%", () => {
+  test("the 23-item menu fits at full size on a wide and on an upright screen", () => {
     const l = layoutMenu(menuForBoard(menus.barista.items));
-    expect(fitScale(l, "landscape")).toBeGreaterThanOrEqual(0.6);
-    expect(fitScale(l, "portrait")).toBeGreaterThanOrEqual(0.5);
-  });
-
-  test("the proposed 23-item menu fits at full size on a wide screen", () => {
-    const food = menus.barista.items.filter((i) => i.category === "savoury");
-    const l = layoutMenu(
-      menuForBoard([
-        it("Cappuccino", 0),
-        it("Americano", 0),
-        it("Masala Chai", 0),
-        it("Espresso", 0),
-        it("Cafe Mocha", 80),
-        it("Cafe Latte", 80),
-        it("Hot Chocolate", 80),
-        it("Elachi Chai", 80),
-        ...food,
-      ]),
-    );
     expect(fitScale(l, "landscape")).toBe(1);
+    expect(fitScale(l, "portrait")).toBe(1);
   });
 
   test("a long menu is shrunk, but never below 50%", () => {

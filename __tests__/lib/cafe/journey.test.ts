@@ -518,3 +518,53 @@ describe("full attendee journey through the webhooks", () => {
     expect(p.last).not.toContain("Order #");
   });
 });
+
+describe("who may send messages to the webhook", () => {
+  const TOKEN = "t".repeat(32);
+  const BASE = "https://cafe.example.net";
+  const form = { From: "whatsapp:+919800000050", To: BOT, Body: "Hi" };
+
+  async function post(signed: boolean | "wrong") {
+    const { getExpectedTwilioSignature } = await import("twilio/lib/webhooks/webhooks");
+    const headers: Record<string, string> = { "content-type": "application/x-www-form-urlencoded" };
+    if (signed === true) headers["x-twilio-signature"] = getExpectedTwilioSignature(TOKEN, `${BASE}/webhooks/messaging`, form);
+    if (signed === "wrong") headers["x-twilio-signature"] = "AAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+    return messaging(
+      new Request("http://localhost:3000/webhooks/messaging", { method: "POST", body: new URLSearchParams(form), headers }),
+    );
+  }
+
+  function mode(value: string | undefined) {
+    process.env.TWILIO_AUTH_TOKEN = TOKEN;
+    process.env.PUBLIC_BASE_URL = BASE;
+    if (value === undefined) delete process.env.REQUIRE_TWILIO_SIGNATURE;
+    else process.env.REQUIRE_TWILIO_SIGNATURE = value;
+  }
+
+  test("by default a bad signature is only logged and the message is still handled", async () => {
+    mode(undefined);
+    expect((await post(false)).status).toBeLessThan(300);
+    expect((await post("wrong")).status).toBeLessThan(300);
+    expect((await post(true)).status).toBeLessThan(300);
+  });
+
+  test("switched on, only a message signed by Twilio gets through", async () => {
+    mode("true");
+    expect((await post(true)).status).toBeLessThan(300);
+    const before = world.sent.length;
+    expect((await post(false)).status).toBe(403);
+    expect((await post("wrong")).status).toBe(403);
+    expect(world.sent.length).toBe(before); // nothing was sent to anyone
+  });
+
+  test("switched off, nothing is checked", async () => {
+    mode("off");
+    expect((await post(false)).status).toBeLessThan(300);
+  });
+
+  test("restores the default", () => {
+    delete process.env.REQUIRE_TWILIO_SIGNATURE;
+    delete process.env.PUBLIC_BASE_URL;
+    delete process.env.TWILIO_AUTH_TOKEN;
+  });
+});

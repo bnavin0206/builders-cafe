@@ -4,8 +4,8 @@ import type { Menus } from "@/types";
 
 export default {
   // Builder's Cafe menu, from the client. It may change later.
-  // Free (the quiz prize): Cappuccino, Cafe Latte, Masala Chai, Tapri Coffee.
-  // Paid: every hot drink is Rs 80 and every cold drink is Rs 100; food is Rs 100.
+  // Free (the quiz prize): Cappuccino, Americano, Masala Chai, Espresso.
+  // Paid: hot drinks Rs 80; food Rs 100.
   // The same drink is listed twice, once free and once priced. The title is
   // what attendees see and what orders use; the shortTitle must be unique
   // because the dashboard's menu picker identifies items by it. Items are shown
@@ -21,8 +21,8 @@ export default {
         price: 0,
       },
       {
-        shortTitle: "Cafe Latte (Free)",
-        title: "Cafe Latte",
+        shortTitle: "Americano (Free)",
+        title: "Americano",
         description: "Hot",
         category: "coffee",
         price: 0,
@@ -35,23 +35,16 @@ export default {
         price: 0,
       },
       {
-        shortTitle: "Tapri Coffee (Free)",
-        title: "Tapri Coffee",
+        shortTitle: "Espresso (Free)",
+        title: "Espresso",
         description: "Hot",
         category: "coffee",
         price: 0,
       },
-      // Paid.
+      // Paid hot drinks, Rs 80.
       {
-        shortTitle: "Espresso",
-        title: "Espresso",
-        description: "Hot",
-        category: "coffee",
-        price: 80,
-      },
-      {
-        shortTitle: "Cappuccino",
-        title: "Cappuccino",
+        shortTitle: "Cafe Mocha",
+        title: "Cafe Mocha",
         description: "Hot",
         category: "coffee",
         price: 80,
@@ -64,34 +57,6 @@ export default {
         price: 80,
       },
       {
-        shortTitle: "Cold Coffee",
-        title: "Cold Coffee",
-        description: "Cold",
-        category: "coffee",
-        price: 100,
-      },
-      {
-        shortTitle: "Frappe Mocha",
-        title: "Frappe Mocha",
-        description: "Cold",
-        category: "coffee",
-        price: 100,
-      },
-      {
-        shortTitle: "Tapri Coffee",
-        title: "Tapri Coffee",
-        description: "Hot",
-        category: "coffee",
-        price: 80,
-      },
-      {
-        shortTitle: "Masala Chai",
-        title: "Masala Chai",
-        description: "Hot",
-        category: "coffee",
-        price: 80,
-      },
-      {
         shortTitle: "Hot Chocolate",
         title: "Hot Chocolate",
         description: "Hot",
@@ -99,18 +64,11 @@ export default {
         price: 80,
       },
       {
-        shortTitle: "Cold Chocolate",
-        title: "Cold Chocolate",
-        description: "Cold",
+        shortTitle: "Elachi Chai",
+        title: "Elachi Chai",
+        description: "Hot",
         category: "coffee",
-        price: 100,
-      },
-      {
-        shortTitle: "Cold Americano",
-        title: "Cold Americano",
-        description: "Cold",
-        category: "coffee",
-        price: 100,
+        price: 80,
       },
       // Food truck (Koshys Bakery), every item Rs 100. The three chicken
       // sandwich names are placeholders until the client sends the real ones.

@@ -65,6 +65,18 @@ items (the drink plus paid extras, never add-ons) and the time; never a name,
 phone, email or payment detail (`src/lib/cafe/board.ts`). Press F11 on the TV
 browser for full screen. Design samples are in `docs/order-board/`.
 
+### Twilio signature check
+
+Every WhatsApp message to `/webhooks/messaging` carries a Twilio signature.
+`REQUIRE_TWILIO_SIGNATURE` sets what the app does with it: unset (the default)
+only logs "the Twilio signature did not match" and still handles the message, so
+a wrong address setting can never cut the cafe off; `true` refuses a message
+with a bad or missing signature with 403; `off` does not check. The address
+that was signed is `PUBLIC_BASE_URL` plus `/webhooks/messaging`, so
+`PUBLIC_BASE_URL` must be the public address of the app. Run a day with it unset,
+check the log has no mismatch, then set it to `true`
+(`src/lib/twilio/webhook-signature.ts`).
+
 ### Menu board (display)
 
 A second full-screen page for a display, showing the live menu with prices:

@@ -22,39 +22,17 @@ describe("Builder's Cafe menu", () => {
   });
 
   test("the free menu is the four quiz prizes", () => {
-    expect(free.map((i) => i.title)).toEqual([
-      "Cappuccino",
-      "Cafe Latte",
-      "Masala Chai",
-      "Tapri Coffee",
-    ]);
+    expect(free.map((i) => i.title)).toEqual(["Cappuccino", "Americano", "Masala Chai", "Espresso"]);
   });
 
-  test("the paid menu has ten drinks (hot Rs 80, cold Rs 100) and 15 food items at Rs 100", () => {
+  test("the paid menu has four hot drinks at Rs 80 and 15 food items at Rs 100", () => {
     const drinks = paid.filter((i) => i.category !== "savoury");
     const food = paid.filter((i) => i.category === "savoury");
-    expect(drinks.map((i) => i.title)).toEqual([
-      "Espresso",
-      "Cappuccino",
-      "Cafe Latte",
-      "Cold Coffee",
-      "Frappe Mocha",
-      "Tapri Coffee",
-      "Masala Chai",
-      "Hot Chocolate",
-      "Cold Chocolate",
-      "Cold Americano",
-    ]);
+    expect(drinks.map((i) => i.title)).toEqual(["Cafe Mocha", "Cafe Latte", "Hot Chocolate", "Elachi Chai"]);
     for (const i of drinks) {
-      expect(i.price).toBe(i.description === "Cold" ? 100 : 80);
-      expect(["Hot", "Cold"]).toContain(i.description);
+      expect(i.price).toBe(80);
+      expect(i.description).toBe("Hot");
     }
-    expect(drinks.filter((i) => i.description === "Cold").map((i) => i.title)).toEqual([
-      "Cold Coffee",
-      "Frappe Mocha",
-      "Cold Chocolate",
-      "Cold Americano",
-    ]);
     expect(food).toHaveLength(15);
     for (const i of food) {
       expect(i.price).toBe(100);
@@ -63,11 +41,10 @@ describe("Builder's Cafe menu", () => {
     expect(paid.length + free.length).toBeLessThanOrEqual(30);
   });
 
-  test("a drink is free and priced under the same title, never twice in one menu", () => {
+  test("no title is repeated within the free menu or within the paid menu", () => {
     for (const list of [free, paid]) {
       expect(new Set(list.map((i) => i.title)).size).toBe(list.length);
     }
-    expect(free.every((f) => paid.some((p) => p.title === f.title))).toBe(true);
   });
 
   test("offers add-ons", () => {

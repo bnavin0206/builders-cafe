@@ -9,6 +9,7 @@ import {
   findSyncMapItems,
   sendMessage,
 } from "@/lib/twilio";
+import { signatureMode, twilioSignatureValid } from "@/lib/twilio/webhook-signature";
 
 import {
   Stages,
@@ -220,7 +221,37 @@ async function parseWebhook(request: Request): Promise<{
   return { sender, incomingMessageBody, mediaUrl, from };
 }
 
+/** Checks the Twilio signature on a copy of the request, so the body can still be read. */
+async function signatureAllowsRequest(request: Request): Promise<boolean> {
+  const mode = signatureMode();
+  if (mode === "off") return true;
+  let ok = false;
+  try {
+    const form = await request.clone().formData();
+    const params: Record<string, string> = {};
+    form.forEach((value, key) => {
+      params[key] = typeof value === "string" ? value : "";
+    });
+    ok = twilioSignatureValid({
+      authToken: process.env.TWILIO_AUTH_TOKEN,
+      signature: request.headers.get("x-twilio-signature"),
+      publicBaseUrl: process.env.PUBLIC_BASE_URL,
+      path: "/webhooks/messaging",
+      params,
+    });
+  } catch (e) {
+    console.error("Could not read the request to check its Twilio signature", e);
+  }
+  if (!ok) {
+    console.error(`Messaging webhook: the Twilio signature did not match (${mode} mode)`);
+  }
+  return ok || mode === "report";
+}
+
 export async function POST(request: Request) {
+  if (!(await signatureAllowsRequest(request))) {
+    return new Response("Forbidden", { status: 403 });
+  }
   const { sender, incomingMessageBody, mediaUrl, from: receivedOn } = await parseWebhook(request);
 
   if (!sender) {
