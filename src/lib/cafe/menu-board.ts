@@ -27,6 +27,7 @@ export interface MenuLayout {
 const NAMES: Record<string, { name: string; short: string }> = {
   hot: { name: "Hot drinks", short: "Hot" },
   cold: { name: "Cold drinks", short: "Cold" },
+  drinks: { name: "Drinks", short: "Drinks" },
   sandwich: { name: "Sandwiches", short: "Sandwiches" },
   savoury: { name: "Savoury", short: "Savoury" },
   pastry: { name: "Pastries", short: "Pastries" },
@@ -59,7 +60,8 @@ function groupsOf(items: BoardMenuItem[]): MenuGroup[] {
     by.get(key)!.push(i);
   }
   return order.map((key) => {
-    const list = by.get(key)!;
+    // Veg items first, then non-veg, each in menu order (the sort is stable).
+    const list = by.get(key)!.slice().sort((a, b) => Number(b.veg) - Number(a.veg));
     const names = NAMES[key.toLowerCase()] ?? { name: key, short: key };
     const prices = new Set(list.map((i) => i.price));
     return { ...names, price: prices.size === 1 ? list[0]!.price : null, items: list };
@@ -114,12 +116,12 @@ export function fitScale(layout: MenuLayout, orientation: "landscape" | "portrai
   if (orientation === "landscape") {
     const avail = 52;
     const free = (avail - (7.4 + 1.6 + 3.4 + 3 + 12.5)) / Math.max(nFree * 4.7, 1);
-    const cols = layout.columns.map((c) => fit(c, 10.4, 3.6, 3.3, avail));
+    const cols = layout.columns.map((c) => fit(c, 7.4, 3.6, 3.3, avail));
     k = Math.min(1, free, ...cols);
   } else {
     const freeH = 7.2 + 2 + Math.ceil(nFree / 2) * 4.2 + 2.2 + 12.4;
     const avail = 120 - 7.5 - 5.5 - 1.2 - 1.6 - freeH - 1;
-    const cols = layout.columns.map((c) => fit(c, 9.4, 3.9, 3.75, avail));
+    const cols = layout.columns.map((c) => fit(c, 5.4, 3.9, 3.75, avail));
     k = Math.min(1, ...cols);
   }
   return Math.max(0.5, Math.round(k * 100) / 100);
@@ -136,7 +138,7 @@ export function fitDisplayScale(layout: MenuLayout, orientation: "landscape" | "
   // Height left for the paid panels, then per column: a fixed part (title,
   // padding, lines under headings) plus a part that shrinks (rows, headings).
   const avail = land ? 44 : 45;
-  const fixed = land ? 7.6 : 6;
+  const fixed = land ? 4.8 : 4;
   const heading = land ? 3.2 : 3.4;
   const row = land ? 2.9 : 3.3;
   const cols = layout.columns.map(

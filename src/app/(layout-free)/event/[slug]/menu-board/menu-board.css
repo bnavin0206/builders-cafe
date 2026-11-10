@@ -39,6 +39,11 @@
 }
 .mb-panel::before { content: ""; position: absolute; inset: calc(.6 * var(--r)); border: calc(.16 * var(--r)) solid rgba(43, 24, 16, .5); border-radius: inherit; pointer-events: none; }
 .mb-panel--free { background: var(--marigold); }
+/* The paid panels have no title: a shallower arch, and the first heading starts below it. */
+.mb-panel:not(.mb-panel--free) {
+  padding-top: calc(4.2 * var(--r));
+  border-radius: 50% 50% calc(1.2 * var(--r)) calc(1.2 * var(--r)) / calc(6 * var(--r)) calc(6 * var(--r)) calc(1.2 * var(--r)) calc(1.2 * var(--r));
+}
 
 .mb-crest { position: absolute; top: calc(1.6 * var(--r)); left: 0; right: 0; text-align: center; padding: 0 calc(3 * var(--r)); }
 .mb-eyebrow { font-family: var(--tw-mono); font-weight: 700; font-size: calc(1.05 * var(--r)); letter-spacing: .2em; text-transform: uppercase; opacity: .8; }

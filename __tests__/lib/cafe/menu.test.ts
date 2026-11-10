@@ -25,20 +25,41 @@ describe("Builder's Cafe menu", () => {
     expect(free.map((i) => i.title)).toEqual(["Cappuccino", "Americano", "Masala Chai", "Espresso"]);
   });
 
-  test("the paid menu has four hot drinks at Rs 80 and 15 food items at Rs 100", () => {
+  test("the paid menu: four drinks at Rs 100, a bottle of water at Rs 20, 15 food items at Rs 100", () => {
     const drinks = paid.filter((i) => i.category !== "savoury");
-    const food = paid.filter((i) => i.category === "savoury");
+    const water = paid.find((i) => i.title === "Water Bottle");
+    const food = paid.filter((i) => i.category === "savoury" && i.title !== "Water Bottle");
     expect(drinks.map((i) => i.title)).toEqual(["Cafe Mocha", "Cafe Latte", "Hot Chocolate", "Elachi Chai"]);
     for (const i of drinks) {
-      expect(i.price).toBe(80);
-      expect(i.description).toBe("Hot");
+      expect(i.price).toBe(100);
+      expect(i.description).toBe("Drinks");
     }
+    // Water is in the Drinks section but is not a drink to add sugar to: no add-ons.
+    expect(water).toMatchObject({ price: 20, description: "Drinks", category: "savoury" });
     expect(food).toHaveLength(15);
     for (const i of food) {
       expect(i.price).toBe(100);
       expect(["Sandwich", "Savoury", "Pastry"]).toContain(i.description);
     }
     expect(paid.length + free.length).toBeLessThanOrEqual(30);
+    expect(paid.some((i) => i.price === 80)).toBe(false);
+  });
+
+  test("in every section the veg items come first, then the non-veg ones", () => {
+    for (const group of ["Drinks", "Sandwich", "Savoury", "Pastry"]) {
+      const flags = paid.filter((i) => i.description === group).map((i) => i.veg !== false);
+      expect(flags.length).toBeGreaterThan(0);
+      const firstNonVeg = flags.indexOf(false);
+      if (firstNonVeg !== -1) expect(flags.slice(firstNonVeg).every((v) => v === false)).toBe(true);
+    }
+    expect(paid.filter((i) => i.description === "Savoury").map((i) => i.title)).toEqual([
+      "Veg Puff",
+      "Veg Spring Roll",
+      "Veg Cutlet",
+      "Chicken Cutlet",
+      "Chicken Puff",
+      "Egg Puff",
+    ]);
   });
 
   test("no title is repeated within the free menu or within the paid menu", () => {

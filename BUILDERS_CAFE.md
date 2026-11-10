@@ -161,6 +161,14 @@ updated brief, to confirm at the meeting) or DEFAULT (developer choice):
 | Already took the quiz, after sign-up or re-scan | go to the paid menu | CLIENT (confirm for winners who have not taken the free coffee; they can reply MENU) |
 | Unpaid link expiry | 2 minutes | CLIENT |
 
+Menu update (latest, `menus.ts`): free with the quiz are Cappuccino, Americano,
+Masala Chai and Espresso. Paid: four drinks at Rs 100 (Cafe Mocha, Cafe Latte, Hot
+Chocolate, Elachi Chai) and a Water Bottle at Rs 20 (all in the "Drinks"
+section; water is a "savoury" item so it gets no add-ons), then 15 food items at
+Rs 100 in Sandwich, Savoury and Pastry. In every section the veg items come first,
+then the non-veg ones (the two boards also sort veg first by themselves). The
+older menu text below is kept for history.
+
 Menu (from the client, may change later; `menus.ts`): free with the quiz are
 Cappuccino, Cafe Latte, Masala Chai and Tapri Coffee. The paid menu has ten
 drinks (plus 15 food items at Rs 100: sandwiches, savoury, pastries): Espresso, Cappuccino, Cafe Latte, Tapri Coffee, Masala Chai and Hot

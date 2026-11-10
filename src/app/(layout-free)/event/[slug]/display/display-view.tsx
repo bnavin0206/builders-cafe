@@ -2,13 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import type { Board, BoardOrder } from "@/lib/cafe/board";
-import {
-  fitDisplayScale,
-  layoutMenu,
-  panelTitle,
-  type BoardMenuItem,
-  type MenuGroup,
-} from "@/lib/cafe/menu-board";
+import { fitDisplayScale, layoutMenu, type BoardMenuItem, type MenuGroup } from "@/lib/cafe/menu-board";
 import "./display.css";
 
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
@@ -65,12 +59,8 @@ function Section({ group }: { group: MenuGroup }) {
 }
 
 function MenuPanel({ groups }: { groups: MenuGroup[] }) {
-  const title = panelTitle(groups);
   return (
     <section className="dp-panel">
-      <div className="dp-crest">
-        <h2 style={{ "--n": title.length } as CSSProperties}>{title}</h2>
-      </div>
       {groups.map((g) => (
         <Section key={g.name} group={g} />
       ))}

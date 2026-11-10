@@ -48,7 +48,10 @@ describe("layout", () => {
     const l = layoutMenu(menuForBoard(menus.barista.items));
     expect(l.free.map((i) => i.title)).toEqual(["Cappuccino", "Americano", "Masala Chai", "Espresso"]);
     const names = l.columns.flat().map((g) => g.name);
-    expect(names).toEqual(["Hot drinks", "Sandwiches", "Savoury", "Pastries"]);
+    expect(names).toEqual(["Drinks", "Sandwiches", "Savoury", "Pastries"]);
+    // Veg first, then non-veg, in every section.
+    const savoury = l.columns.flat().find((g) => g.name === "Savoury")!;
+    expect(savoury.items.map((i) => i.title)).toEqual(["Veg Puff", "Veg Spring Roll", "Veg Cutlet", "Chicken Cutlet", "Chicken Puff", "Egg Puff"]);
   });
 
   test("the two columns are balanced and never reorder groups", () => {
@@ -59,10 +62,23 @@ describe("layout", () => {
     expect(l.columns[1].length).toBeGreaterThan(0);
   });
 
+  test("veg items are listed before non-veg ones within a group, keeping menu order otherwise", () => {
+    const l = layoutMenu(
+      menuForBoard([
+        it("Chicken A", 100, "Savoury", { veg: false }),
+        it("Veg A", 100, "Savoury"),
+        it("Chicken B", 100, "Savoury", { veg: false }),
+        it("Veg B", 100, "Savoury"),
+      ]),
+    );
+    expect(l.columns.flat()[0]!.items.map((i) => i.title)).toEqual(["Veg A", "Veg B", "Chicken A", "Chicken B"]);
+  });
+
   test("a group's price shows only when every item costs the same", () => {
     const l = layoutMenu(menuForBoard([it("A", 80), it("B", 80), it("C", 120, "Cold"), it("D", 100, "Cold")]));
     const all = l.columns.flat();
     expect(all.find((g) => g.name === "Hot drinks")!.price).toBe(80);
+    expect(layoutMenu(menuForBoard(menus.barista.items)).columns.flat().find((g) => g.name === "Drinks")!.price).toBeNull(); // water is Rs 20
     expect(all.find((g) => g.name === "Cold drinks")!.price).toBeNull();
   });
 
@@ -83,7 +99,7 @@ describe("layout", () => {
 
   test("a panel title joins its groups, and says '& more' when there are too many for the arch", () => {
     const l = layoutMenu(menuForBoard(menus.barista.items));
-    expect(panelTitle(l.columns[0])).toBe("Hot & Sandwiches");
+    expect(panelTitle(l.columns[0])).toBe("Drinks & Sandwiches");
     expect(panelTitle(l.columns[1])).toBe("Savoury & Pastries");
     const three = layoutMenu(menuForBoard([it("A", 80, "Hot"), it("B", 80, "Cold"), it("C", 100, "Sandwich"), it("D", 100, "Pastry"), it("E", 100, "Savoury"), it("F", 100, "Savoury")]));
     expect(panelTitle(three.columns.flat())).toBe("Hot & more");
@@ -93,10 +109,10 @@ describe("layout", () => {
 });
 
 describe("fit", () => {
-  test("the 23-item menu fits at full size on a wide and on an upright screen", () => {
+  test("the 24-item menu fits at close to full size on a wide and on an upright screen", () => {
     const l = layoutMenu(menuForBoard(menus.barista.items));
-    expect(fitScale(l, "landscape")).toBe(1);
-    expect(fitScale(l, "portrait")).toBe(1);
+    expect(fitScale(l, "landscape")).toBeGreaterThanOrEqual(0.9);
+    expect(fitScale(l, "portrait")).toBeGreaterThanOrEqual(0.9);
   });
 
   test("a long menu is shrunk, but never below 50%", () => {

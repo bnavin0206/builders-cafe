@@ -63,7 +63,7 @@
 /* ---- the paid menu panels ---- */
 .dp-paid { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: calc(1.6 * var(--r)); min-height: 0; }
 .dp-panel {
-  position: relative; min-height: 0; overflow: hidden; background: var(--chalk); padding: calc(1.6 * var(--r)) calc(1.8 * var(--r)) calc(1.2 * var(--r));
+  position: relative; min-height: 0; overflow: hidden; background: var(--chalk); padding: calc(3.4 * var(--r)) calc(1.8 * var(--r)) calc(1.2 * var(--r));
   border-radius: 50% 50% calc(1.2 * var(--r)) calc(1.2 * var(--r)) / calc(4 * var(--r)) calc(4 * var(--r)) calc(1.2 * var(--r)) calc(1.2 * var(--r));
   box-shadow: calc(.35 * var(--r)) calc(.35 * var(--r)) 0 rgba(0, 0, 0, .35); container-type: inline-size;
 }

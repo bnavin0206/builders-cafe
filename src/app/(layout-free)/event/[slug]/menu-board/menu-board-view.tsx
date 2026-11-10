@@ -1,11 +1,5 @@
 import type { CSSProperties } from "react";
-import {
-  fitScale,
-  layoutMenu,
-  panelTitle,
-  type BoardMenuItem,
-  type MenuGroup,
-} from "@/lib/cafe/menu-board";
+import { fitScale, layoutMenu, type BoardMenuItem, type MenuGroup } from "@/lib/cafe/menu-board";
 import "./menu-board.css";
 
 // Twilio Sans loads from twilio-fonts.css; these two are only the fallback if it cannot.
@@ -43,16 +37,9 @@ function Section({ group }: { group: MenuGroup }) {
   );
 }
 
-/** Long panel titles are set smaller so they stay inside the arch. */
-const crestSize = (title: string) => (title.length <= 14 ? "" : title.length <= 22 ? " mb-crest--md" : " mb-crest--sm");
-
 function Panel({ groups }: { groups: MenuGroup[] }) {
-  const title = panelTitle(groups);
   return (
     <section className="mb-panel">
-      <div className={`mb-crest${crestSize(title)}`}>
-        <h2 style={{ "--n": title.length } as CSSProperties}>{title}</h2>
-      </div>
       {groups.map((g) => (
         <Section key={g.name} group={g} />
       ))}

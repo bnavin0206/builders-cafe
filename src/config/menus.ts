@@ -5,7 +5,7 @@ import type { Menus } from "@/types";
 export default {
   // Builder's Cafe menu, from the client. It may change later.
   // Free (the quiz prize): Cappuccino, Americano, Masala Chai, Espresso.
-  // Paid: hot drinks Rs 80; food Rs 100.
+  // Paid: drinks Rs 100 (water Rs 20); food Rs 100.
   // The same drink is listed twice, once free and once priced. The title is
   // what attendees see and what orders use; the shortTitle must be unique
   // because the dashboard's menu picker identifies items by it. Items are shown
@@ -41,37 +41,64 @@ export default {
         category: "coffee",
         price: 0,
       },
-      // Paid hot drinks, Rs 80.
+      // Drinks, Rs 100; a bottle of water is Rs 20 (a "savoury" item so it gets no add-ons).
       {
         shortTitle: "Cafe Mocha",
         title: "Cafe Mocha",
-        description: "Hot",
+        description: "Drinks",
         category: "coffee",
-        price: 80,
+        price: 100,
       },
       {
         shortTitle: "Cafe Latte",
         title: "Cafe Latte",
-        description: "Hot",
+        description: "Drinks",
         category: "coffee",
-        price: 80,
+        price: 100,
       },
       {
         shortTitle: "Hot Chocolate",
         title: "Hot Chocolate",
-        description: "Hot",
+        description: "Drinks",
         category: "coffee",
-        price: 80,
+        price: 100,
       },
       {
         shortTitle: "Elachi Chai",
         title: "Elachi Chai",
-        description: "Hot",
+        description: "Drinks",
         category: "coffee",
-        price: 80,
+        price: 100,
       },
-      // Food truck (Koshys Bakery), every item Rs 100. The three chicken
-      // sandwich names are placeholders until the client sends the real ones.
+      {
+        shortTitle: "Water Bottle",
+        title: "Water Bottle",
+        description: "Drinks",
+        category: "savoury",
+        price: 20,
+      },
+      // Food, Rs 100. In every section the veg items come first, then the non-veg ones.
+      {
+        shortTitle: "Mint Sandwich",
+        title: "Mint Sandwich",
+        description: "Sandwich",
+        category: "savoury",
+        price: 100,
+      },
+      {
+        shortTitle: "Cheese Sandwich",
+        title: "Cheese Sandwich",
+        description: "Sandwich",
+        category: "savoury",
+        price: 100,
+      },
+      {
+        shortTitle: "Potato Sandwich",
+        title: "Potato Sandwich",
+        description: "Sandwich",
+        category: "savoury",
+        price: 100,
+      },
       {
         shortTitle: "Chicken Sandwich 1",
         title: "Chicken Sandwich 1",
@@ -97,23 +124,23 @@ export default {
         veg: false,
       },
       {
-        shortTitle: "Mint Sandwich",
-        title: "Mint Sandwich",
-        description: "Sandwich",
+        shortTitle: "Veg Puff",
+        title: "Veg Puff",
+        description: "Savoury",
         category: "savoury",
         price: 100,
       },
       {
-        shortTitle: "Cheese Sandwich",
-        title: "Cheese Sandwich",
-        description: "Sandwich",
+        shortTitle: "Veg Spring Roll",
+        title: "Veg Spring Roll",
+        description: "Savoury",
         category: "savoury",
         price: 100,
       },
       {
-        shortTitle: "Potato Sandwich",
-        title: "Potato Sandwich",
-        description: "Sandwich",
+        shortTitle: "Veg Cutlet",
+        title: "Veg Cutlet",
+        description: "Savoury",
         category: "savoury",
         price: 100,
       },
@@ -140,27 +167,6 @@ export default {
         category: "savoury",
         price: 100,
         veg: false,
-      },
-      {
-        shortTitle: "Veg Puff",
-        title: "Veg Puff",
-        description: "Savoury",
-        category: "savoury",
-        price: 100,
-      },
-      {
-        shortTitle: "Veg Spring Roll",
-        title: "Veg Spring Roll",
-        description: "Savoury",
-        category: "savoury",
-        price: 100,
-      },
-      {
-        shortTitle: "Veg Cutlet",
-        title: "Veg Cutlet",
-        description: "Savoury",
-        category: "savoury",
-        price: 100,
       },
       {
         shortTitle: "Cookies",
