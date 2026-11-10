@@ -65,6 +65,22 @@ items (the drink plus paid extras, never add-ons) and the time; never a name,
 phone, email or payment detail (`src/lib/cafe/board.ts`). Press F11 on the TV
 browser for full screen. Design samples are in `docs/order-board/`.
 
+### Menu board (display)
+
+A second full-screen page for a display, showing the live menu with prices:
+`<PUBLIC_BASE_URL>/event/<slug>/menu-board?key=<BOARD_KEY>` (the same key as the
+order board). It reads the event's menu, so a changed price, an item switched
+off for the day, or a new item shows within 15 seconds. Free items (price 0)
+get the yellow panel with a "Scan to order" QR code (a WhatsApp chat with the
+event's first WhatsApp sender, saying "Hi"); the paid groups (the item
+descriptions: Hot, Cold, Sandwich...) are split into two arched panels in menu
+order. Each item has a veg or non-veg mark: set it per item in the dashboard's
+"Menu, prices and add-ons" (`veg: false` means non-veg; unset is veg). It
+scales for a wide or an upright screen; a menu of more than about 23 paid items
+is shrunk (down to half size), and on an upright screen a longer one is cut off
+at the bottom. The feed is `/api/event/<slug>/menu-board?key=...` and carries
+only the item names, prices, groups and veg marks (`src/lib/cafe/menu-board.ts`).
+
 ### WhatsApp list pickers
 
 The coffee, add-on and extra menus are sent as WhatsApp list pickers (a button

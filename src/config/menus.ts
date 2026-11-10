@@ -120,6 +120,7 @@ export default {
         description: "Sandwich",
         category: "savoury",
         price: 100,
+        veg: false,
       },
       {
         shortTitle: "Chicken Sandwich 2",
@@ -127,6 +128,7 @@ export default {
         description: "Sandwich",
         category: "savoury",
         price: 100,
+        veg: false,
       },
       {
         shortTitle: "Chicken Sandwich 3",
@@ -134,6 +136,7 @@ export default {
         description: "Sandwich",
         category: "savoury",
         price: 100,
+        veg: false,
       },
       {
         shortTitle: "Mint Sandwich",
@@ -162,6 +165,7 @@ export default {
         description: "Savoury",
         category: "savoury",
         price: 100,
+        veg: false,
       },
       {
         shortTitle: "Chicken Puff",
@@ -169,6 +173,7 @@ export default {
         description: "Savoury",
         category: "savoury",
         price: 100,
+        veg: false,
       },
       {
         shortTitle: "Egg Puff",
@@ -176,6 +181,7 @@ export default {
         description: "Savoury",
         category: "savoury",
         price: 100,
+        veg: false,
       },
       {
         shortTitle: "Veg Puff",

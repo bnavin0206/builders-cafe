@@ -50,6 +50,8 @@ export interface MenuItem {
   // false hides the item from customers for now (the daily on/off switch in
   // the dashboard). Unset means available, so older events keep working.
   available?: boolean;
+  // false marks a non-veg item on the menu board. Unset means veg.
+  veg?: boolean;
 }
 
 export type Menus = {

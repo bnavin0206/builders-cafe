@@ -32,6 +32,12 @@ describe("validateSelection", () => {
     expect(validateSelection(sel([item({ available: "no" as unknown as boolean })]))).toContain("on/off");
   });
 
+  test("the veg setting must be true or false", () => {
+    expect(validateSelection(sel([item({ veg: false })]))).toBeNull();
+    expect(validateSelection(sel([item({ veg: true })]))).toBeNull();
+    expect(validateSelection(sel([item({ veg: "yes" as unknown as boolean })]))).toContain("veg");
+  });
+
   test("an empty menu is allowed", () => {
     expect(validateSelection(sel([], []))).toBeNull();
   });

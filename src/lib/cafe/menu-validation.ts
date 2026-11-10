@@ -48,6 +48,10 @@ export function validateSelection(selection: unknown): string | null {
       return `"${name}" has an invalid on/off setting.`;
     }
 
+    if (item.veg !== undefined && typeof item.veg !== "boolean") {
+      return `"${name}" has an invalid veg setting.`;
+    }
+
     const price = item.price ?? 0;
     if (
       typeof price !== "number" ||

@@ -1,0 +1,115 @@
+/* Menu board for a display. One page, both orientations: three arched panels
+   side by side on a wide screen; a free-coffee panel on top and two panels
+   below on an upright one. --r is the size of "1rem" in the design (16px on a
+   1920x1080 or 1080x1920 screen), so every size is written calc(N * var(--r)).
+   --k (0.55 to 1) shrinks the rows of a long menu so it still fits; the page
+   sets --k-land and --k-port from the number of items. */
+.mb-root {
+  --night: #15122e; --night2: #211b4d; --marigold: #ffb800; --chilli: #d4251c;
+  --chalk: #f8f2e4; --chai: #2b1810; --leaf: #1c8a4a;
+  --r: min(calc(100vw / 120), calc(100vh / 67.5));
+  --k: var(--k-land, 1);
+  position: fixed; inset: 0; z-index: 50; overflow: hidden; cursor: none;
+  color: var(--chai); font-family: "Hanken Grotesk", system-ui, sans-serif; font-weight: 500;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Cpath d='M24 4l5 15 15 5-15 5-5 15-5-15-15-5 15-5z' fill='none' stroke='%23ffb800' stroke-opacity='.13' stroke-width='1.2'/%3E%3C/svg%3E"),
+    radial-gradient(120% 90% at 50% 0%, var(--night2), var(--night));
+  background-size: calc(3 * var(--r)) calc(3 * var(--r)), auto;
+  display: grid; grid-template-rows: calc(7.5 * var(--r)) 1fr calc(4.6 * var(--r));
+  padding: 0 calc(2.2 * var(--r));
+}
+.mb-root *, .mb-root *::before, .mb-root *::after { box-sizing: border-box; margin: 0; }
+.mb-root ul { list-style: none; padding: 0; }
+
+.mb-bar { display: flex; align-items: center; justify-content: space-between; color: var(--chalk); }
+.mb-brand { font-family: "Yatra One", serif; font-size: calc(4.6 * var(--r)); line-height: 1; color: var(--marigold); letter-spacing: .02em; }
+.mb-brand small { font-family: "JetBrains Mono", ui-monospace, monospace; font-weight: 700; font-size: calc(1.15 * var(--r)); letter-spacing: .2em; color: var(--chalk); margin-left: calc(1.4 * var(--r)); vertical-align: calc(1.2 * var(--r)); }
+.mb-logo { height: calc(3 * var(--r)); width: auto; display: block; }
+
+.mb-panels { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: calc(2 * var(--r)); min-height: 0; padding-bottom: calc(1.4 * var(--r)); }
+.mb-panel {
+  position: relative; min-height: 0; overflow: hidden; background: var(--chalk);
+  padding: calc(7.4 * var(--r)) calc(2.2 * var(--r)) calc(1.6 * var(--r));
+  border-radius: 50% 50% calc(1.2 * var(--r)) calc(1.2 * var(--r)) / calc(9 * var(--r)) calc(9 * var(--r)) calc(1.2 * var(--r)) calc(1.2 * var(--r));
+  box-shadow: calc(.4 * var(--r)) calc(.4 * var(--r)) 0 rgba(0, 0, 0, .35);
+}
+.mb-panel::before { content: ""; position: absolute; inset: calc(.6 * var(--r)); border: calc(.16 * var(--r)) solid rgba(43, 24, 16, .5); border-radius: inherit; pointer-events: none; }
+.mb-panel--free { background: var(--marigold); }
+
+.mb-crest { position: absolute; top: calc(1.6 * var(--r)); left: 0; right: 0; text-align: center; padding: 0 calc(3 * var(--r)); }
+.mb-eyebrow { font-family: "JetBrains Mono", ui-monospace, monospace; font-weight: 700; font-size: calc(1.05 * var(--r)); letter-spacing: .2em; text-transform: uppercase; opacity: .8; }
+.mb-crest h2 { font-family: "Yatra One", serif; font-weight: 400; font-size: calc(4.2 * var(--r)); line-height: 1.05; margin-top: calc(.3 * var(--r)); padding-top: calc(1.4 * var(--r)); }
+.mb-panel--free .mb-crest h2 { padding-top: 0; }
+.mb-crest--md h2 { font-size: calc(3.3 * var(--r)); padding-top: calc(1.8 * var(--r)); }
+.mb-crest--sm h2 { font-size: calc(2.7 * var(--r)); padding-top: calc(2.2 * var(--r)); }
+
+.mb-sec + .mb-sec { margin-top: calc(1.5 * var(--r) * var(--k)); }
+.mb-sec h3 {
+  font-family: "Yatra One", serif; font-weight: 400; font-size: calc(2.5 * var(--r) * var(--k));
+  display: flex; align-items: baseline; justify-content: space-between;
+  border-bottom: calc(.2 * var(--r)) solid var(--chai); padding-bottom: calc(.3 * var(--r)); margin-bottom: calc(.7 * var(--r) * var(--k));
+}
+.mb-sec h3 small { font-family: "JetBrains Mono", ui-monospace, monospace; font-weight: 700; font-size: calc(1.05 * var(--r)); letter-spacing: .1em; text-transform: uppercase; }
+
+.mb-item { display: flex; align-items: center; gap: calc(.8 * var(--r)); height: calc(3.3 * var(--r) * var(--k)); font-weight: 700; font-size: calc(1.95 * var(--r) * var(--k)); }
+.mb-name { white-space: nowrap; }
+.mb-leader { flex: 1; min-width: calc(1 * var(--r)); border-bottom: calc(.16 * var(--r)) dotted rgba(43, 24, 16, .4); transform: translateY(calc(.45 * var(--r))); }
+.mb-mark { flex: none; width: calc(1.5 * var(--r)); height: calc(1.5 * var(--r)); border: calc(.14 * var(--r)) solid; display: grid; place-items: center; border-radius: calc(.2 * var(--r)); background: #fff; }
+.mb-mark--veg { border-color: var(--leaf); }
+.mb-mark--veg::after { content: ""; width: 55%; height: 55%; border-radius: 50%; background: var(--leaf); }
+.mb-mark--non { border-color: var(--chilli); }
+.mb-mark--non::after { content: ""; width: 0; height: 0; border-left: calc(.4 * var(--r)) solid transparent; border-right: calc(.4 * var(--r)) solid transparent; border-bottom: calc(.7 * var(--r)) solid var(--chilli); }
+
+.mb-tok {
+  flex: none; min-width: calc(5.2 * var(--r)); text-align: center; color: var(--chalk);
+  font-family: "Yatra One", serif; font-weight: 400; font-size: calc(2 * var(--r) * var(--k)); line-height: calc(2.5 * var(--r) * var(--k)); height: calc(2.5 * var(--r) * var(--k));
+  padding: 0 calc(.9 * var(--r));
+  background:
+    radial-gradient(circle at 0 50%, transparent calc(.5 * var(--r)), var(--chilli) calc(.53 * var(--r))) left / 51% 100% no-repeat,
+    radial-gradient(circle at 100% 50%, transparent calc(.5 * var(--r)), var(--chilli) calc(.53 * var(--r))) right / 51% 100% no-repeat;
+}
+.mb-tok--free {
+  color: var(--marigold); font-size: calc(1.5 * var(--r)); letter-spacing: .12em;
+  background:
+    radial-gradient(circle at 0 50%, transparent calc(.5 * var(--r)), var(--chai) calc(.53 * var(--r))) left / 51% 100% no-repeat,
+    radial-gradient(circle at 100% 50%, transparent calc(.5 * var(--r)), var(--chai) calc(.53 * var(--r))) right / 51% 100% no-repeat;
+}
+.mb-panel--free .mb-item { height: calc(4.7 * var(--r) * var(--k)); font-size: calc(2.5 * var(--r) * var(--k)); }
+.mb-how { margin-top: calc(1.1 * var(--r)); font-size: calc(1.35 * var(--r)); line-height: 1.35; font-weight: 700; }
+
+.mb-scan { position: absolute; left: calc(2.2 * var(--r)); right: calc(2.2 * var(--r)); bottom: calc(1.8 * var(--r)); display: flex; align-items: center; gap: calc(1.4 * var(--r)); background: var(--chalk); border-radius: calc(.8 * var(--r)); padding: calc(1 * var(--r)) calc(1.2 * var(--r)); }
+.mb-qr { width: calc(9.4 * var(--r)); height: calc(9.4 * var(--r)); flex: none; }
+.mb-qr svg { width: 100%; height: 100%; display: block; }
+.mb-scan b { display: block; font-family: "Yatra One", serif; font-weight: 400; font-size: calc(2.3 * var(--r)); line-height: 1.05; }
+.mb-scan span { font-size: calc(1.25 * var(--r)); font-weight: 700; display: block; margin-top: calc(.4 * var(--r)); }
+
+.mb-panels--empty { grid-auto-flow: row; place-items: center; }
+.mb-notice { color: var(--chalk); font-family: "JetBrains Mono", ui-monospace, monospace; font-size: calc(2 * var(--r)); }
+
+.mb-foot { display: flex; align-items: center; justify-content: space-between; color: var(--chalk); font-size: calc(1.4 * var(--r)); font-weight: 700; border-top: calc(.14 * var(--r)) solid rgba(255, 184, 0, .5); }
+.mb-legend { display: flex; align-items: center; gap: calc(2 * var(--r)); }
+.mb-legend span { display: flex; align-items: center; gap: calc(.6 * var(--r)); }
+.mb-legend .mb-mark { width: calc(1.3 * var(--r)); height: calc(1.3 * var(--r)); }
+
+@media (orientation: portrait) {
+  .mb-root { --r: min(calc(100vw / 67.5), calc(100vh / 120)); --k: var(--k-port, 1); grid-template-rows: calc(7.5 * var(--r)) 1fr calc(5.5 * var(--r)); padding: 0 calc(2 * var(--r)); }
+  .mb-brand { font-size: calc(3.4 * var(--r)); }
+  .mb-brand small { display: none; }
+  .mb-logo { height: calc(2.4 * var(--r)); }
+  .mb-panels { grid-auto-flow: row; grid-template-columns: 1fr 1fr; grid-auto-columns: unset; grid-template-rows: auto 1fr; gap: calc(1.6 * var(--r)); padding-bottom: calc(1.2 * var(--r)); }
+  .mb-panel--free { grid-column: 1 / -1; padding: calc(7.2 * var(--r)) calc(2 * var(--r)) calc(2 * var(--r)); }
+  .mb-panel--free .mb-free-list { display: grid; grid-template-columns: 1fr 1fr; column-gap: calc(3 * var(--r)); }
+  .mb-panel--free .mb-item { height: calc(3.9 * var(--r) * var(--k)); font-size: calc(2.2 * var(--r) * var(--k)); }
+  .mb-panel--free .mb-scan { position: static; margin-top: calc(1.4 * var(--r)); }
+  .mb-panel:not(.mb-panel--free) { padding: calc(1.6 * var(--r)) calc(1.6 * var(--r)) calc(1.4 * var(--r)); border-radius: calc(1.2 * var(--r)); }
+  .mb-panel:not(.mb-panel--free):nth-child(2):last-child { grid-column: 1 / -1; }
+  .mb-panel:not(.mb-panel--free) .mb-crest { position: static; padding: 0; margin-bottom: calc(1.4 * var(--r)); text-align: center; }
+  .mb-panel:not(.mb-panel--free) .mb-crest h2 { font-size: calc(3.1 * var(--r)); padding-top: 0; }
+  .mb-panel:not(.mb-panel--free) .mb-crest--md h2 { font-size: calc(2.6 * var(--r)); }
+  .mb-panel:not(.mb-panel--free) .mb-crest--sm h2 { font-size: calc(2.2 * var(--r)); }
+  .mb-panel:not(.mb-panel--free) .mb-item { font-size: calc(1.75 * var(--r) * var(--k)); height: calc(3.75 * var(--r) * var(--k)); }
+  .mb-panel:not(.mb-panel--free) .mb-sec h3 { font-size: calc(2.3 * var(--r) * var(--k)); }
+  .mb-tok { min-width: calc(4.6 * var(--r)); font-size: calc(1.8 * var(--r) * var(--k)); height: calc(2.3 * var(--r) * var(--k)); line-height: calc(2.3 * var(--r) * var(--k)); }
+  .mb-foot { flex-direction: column; justify-content: center; gap: calc(.5 * var(--r)); font-size: calc(1.25 * var(--r)); }
+}
+@media (prefers-reduced-motion: reduce) { .mb-root * { animation: none !important; } }

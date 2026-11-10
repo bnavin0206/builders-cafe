@@ -744,6 +744,31 @@ function EventPage({ params }: { params: Promise<{ slug: string }> }) {
                       <p className="text-xs text-gray-400 text-right">{item.shortTitle.length}/24</p>
                     </div>
                     <div className="space-y-1">
+                      <Label className="text-xs">Veg or non-veg (menu board mark)</Label>
+                      <div className="flex gap-2">
+                        {[
+                          { v: true, label: "Veg" },
+                          { v: false, label: "Non-veg" },
+                        ].map((o) => (
+                          <button
+                            key={o.label}
+                            type="button"
+                            aria-pressed={(item.veg !== false) === o.v}
+                            onClick={() => updateMenuItem(index, { veg: o.v })}
+                            className={`rounded-md border px-3 py-1 text-xs ${
+                              (item.veg !== false) === o.v
+                                ? o.v
+                                  ? "border-green-600 bg-green-50 text-green-700"
+                                  : "border-red-600 bg-red-50 text-red-700"
+                                : "border-gray-200 text-gray-500"
+                            }`}
+                          >
+                            {o.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-1">
                       <Label className="text-xs">Description</Label>
                       <Textarea
                         value={item.description}
