@@ -17,6 +17,7 @@ export enum Stages {
   BLOCKED = "BLOCKED",
   QUIZ = "QUIZ",
   QUIZ_FAILED = "QUIZ_FAILED",
+  SURVEY = "SURVEY",
   PICK_COFFEE = "PICK_COFFEE",
   PICK_ADDONS = "PICK_ADDONS",
   PICK_EXTRA = "PICK_EXTRA",
@@ -77,6 +78,8 @@ export interface Order {
   // amountPaise 0 and no paymentId.
   amountPaise?: number;
   paymentId?: string;
+  // True when the order includes the free coffee (counted against the daily limit).
+  freeCoffee?: boolean;
 }
 
 /** One row of a WhatsApp list picker. */
@@ -122,6 +125,8 @@ export interface Event {
   // concept. Kept as separate fields on purpose — the CSV cleanser doesn't
   // consume this field, so the shape divergence has no downstream effect.
   lastClearedAt?: string;
+  // Most free coffees given in one day (Bengaluru time). Unset means the default.
+  freeCoffeeLimitPerDay?: number;
 }
 
 export interface SegmentData {
@@ -169,6 +174,15 @@ export interface AttendeeRecord {
   quizCorrect?: number;
   quizAttempts?: number;
   quizResult?: "passed" | "failed";
+  // Survey after the quiz: "dev" for a pass, "general" otherwise.
+  surveyKind?: "dev" | "general";
+  surveyIndex?: number;
+  // One entry per question answered so far (several picks joined with "; ").
+  surveyAnswers?: string[];
+  // True while the attendee has chosen "Other" and we wait for their typed text.
+  surveyOtherPending?: boolean;
+  surveyPicks?: number[];
+  surveyDone?: boolean;
   // "free" shows every item, "paid" shows only items with a price above 0.
   menuMode?: "free" | "paid";
   // Free coffees taken so far, for the whole event.

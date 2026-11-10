@@ -19,6 +19,9 @@ export interface LeadPayload {
   completedSignup: boolean;
   event?: string;
   stage?: string;
+  // Survey after the quiz: which one, and the answer to each question in order.
+  surveyType?: "dev" | "general";
+  surveyAnswers?: string[];
   verifiedAt: string; // ISO time
 }
 
@@ -39,6 +42,7 @@ export function buildLead(
     completedSignup: true,
     event: event.slug,
     stage: record.stage,
+    ...(record.surveyDone ? { surveyType: record.surveyKind, surveyAnswers: record.surveyAnswers } : {}),
     verifiedAt: now.toISOString(),
   };
 }

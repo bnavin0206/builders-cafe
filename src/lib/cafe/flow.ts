@@ -29,6 +29,9 @@ import {
   questionById,
 } from "./quiz";
 import { listMsg, msg } from "./messages";
+import { surveys, type SurveyKind } from "@/config/surveys";
+import { answerText, formatSurveyQuestion, parseSurveyReply } from "./survey";
+import { cleanText } from "./text";
 
 export interface PaymentLinkRequest {
   amountPaise: number;
@@ -60,6 +63,10 @@ export interface CafeDeps {
    * yet); the flow then sends the plain text menu instead.
    */
   sendList?(prompt: string, rows: ListRow[]): Promise<boolean>;
+  /** Optional: how many free coffees were given today (Bengaluru time). */
+  freeCoffeesToday?(): Promise<number>;
+  /** Optional: send the attendee's lead again, now with the survey answers. */
+  updateLead?(record: AttendeeRecord): Promise<void>;
 }
 
 export interface CafeInput {
@@ -144,6 +151,8 @@ export async function handleCafeMessage(
   switch (stage) {
     case Stages.QUIZ:
       return answerQuiz(input, deps, rules, bank);
+    case Stages.SURVEY:
+      return answerSurvey(input, deps, rules);
     case Stages.PICK_COFFEE:
       return pickCoffee(input, deps, rules);
     case Stages.PICK_ADDONS:
@@ -197,6 +206,7 @@ export async function enter(
   }
   if (
     record.stage === Stages.QUIZ ||
+    record.stage === Stages.SURVEY ||
     isPicking(record.stage) ||
     record.stage === Stages.AWAITING_PAYMENT
   ) {
@@ -225,14 +235,23 @@ export async function begin(
     return showCoffeeMenu(input, deps, "paid", { text: msg.quizFailedPaid, list: listMsg.quizFailedPaid });
   }
   if (record.quizResult === "passed") {
-    return freeAvailable(record, rules)
-      ? showCoffeeMenu(input, deps, "free", { text: msg.coffeePrompt, list: listMsg.coffeePrompt })
-      : showCoffeeMenu(input, deps, "paid", { text: msg.freeUsed, list: listMsg.freeUsed });
+    if (!freeAvailable(record, rules)) {
+      return showCoffeeMenu(input, deps, "paid", { text: msg.freeUsed, list: listMsg.freeUsed });
+    }
+    if (!(await freeOpen(input, deps, rules))) {
+      return showCoffeeMenu(input, deps, "paid", { text: msg.freeOver, list: listMsg.freeOver });
+    }
+    return showCoffeeMenu(input, deps, "free", { text: msg.coffeePrompt, list: listMsg.coffeePrompt });
   }
 
   const attempts = record.quizAttempts ?? 0;
   if (attempts >= rules.maxQuizAttempts) {
     return failQuiz(input, deps, rules, record.quizCorrect ?? 0);
+  }
+  // Once the day's free coffees are gone there is nothing to win: no quiz and
+  // no survey, straight to the paid menu.
+  if (!(await freeOpen(input, deps, rules))) {
+    return showCoffeeMenu(input, deps, "paid", { text: msg.freeOver, list: listMsg.freeOver });
   }
   const seen = record.quizSeen ?? [];
   const ids = pickQuestions(bank, rules.quizQuestionCount, seen, deps.rng);
@@ -250,6 +269,130 @@ export async function begin(
 
 function freeAvailable(record: AttendeeRecord, rules: CafeRules): boolean {
   return (record.freeCoffeesTaken ?? 0) < rules.freeCoffeesPerEvent;
+}
+
+/** True while fewer than the day's limit of free coffees have been given. */
+async function freeOpen(input: CafeInput, deps: CafeDeps, rules: CafeRules): Promise<boolean> {
+  if (!deps.freeCoffeesToday) return true;
+  const limit = input.event.freeCoffeeLimitPerDay ?? rules.freeCoffeesPerDay;
+  return (await deps.freeCoffeesToday()) < limit;
+}
+
+/** The survey after the quiz: the developer one for a pass, the general one otherwise. */
+async function startSurvey(
+  input: CafeInput,
+  deps: CafeDeps,
+  rules: CafeRules,
+  kind: SurveyKind,
+) {
+  const { phone, record } = input;
+  if (record.surveyDone) return afterSurvey(input, deps, rules);
+  const questions = surveys[kind];
+  await deps.save(phone, {
+    stage: Stages.SURVEY,
+    surveyKind: kind,
+    surveyIndex: 0,
+    surveyAnswers: [],
+    surveyOtherPending: undefined,
+    surveyPicks: undefined,
+  });
+  deps.send(kind === "dev" ? msg.surveyIntroDev(questions.length) : msg.surveyIntroGeneral(questions.length));
+  deps.send(formatSurveyQuestion(questions[0]!, 1, questions.length));
+}
+
+async function answerSurvey(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
+  const { record, phone, message } = input;
+  const kind = record.surveyKind;
+  const questions = kind ? surveys[kind] : undefined;
+  const index = record.surveyIndex ?? 0;
+  const q = questions?.[index];
+  if (!kind || !questions || !q) {
+    // The survey state is missing: carry on as if it were done.
+    await deps.save(phone, { surveyDone: true });
+    return afterSurvey({ ...input, record: { ...record, surveyDone: true } }, deps, rules);
+  }
+
+  // A nudge (MENU, hi, an empty message) asks the same question again.
+  if (!message.trim() || isReset(message)) {
+    deps.send(record.surveyOtherPending ? msg.surveyTypeOther : formatSurveyQuestion(q, index + 1, questions.length));
+    return;
+  }
+
+  let answer: string;
+  if (record.surveyOtherPending) {
+    const typed = cleanText(message, rules.surveyOtherMaxChars);
+    if (!typed) {
+      deps.send(msg.surveyTypeOther);
+      return;
+    }
+    answer = answerText(q, record.surveyPicks ?? [], typed);
+  } else {
+    const picks = parseSurveyReply(message, q);
+    if (!picks) {
+      deps.send(q.multi ? msg.surveyMultiInvalid : msg.surveySingleInvalid);
+      deps.send(formatSurveyQuestion(q, index + 1, questions.length));
+      return;
+    }
+    if (q.other && picks.includes(q.other)) {
+      await deps.save(phone, { surveyOtherPending: true, surveyPicks: picks });
+      deps.send(msg.surveyTypeOther);
+      return;
+    }
+    answer = answerText(q, picks);
+  }
+
+  const answers = [...(record.surveyAnswers ?? [])];
+  answers[index] = answer;
+  if (index + 1 < questions.length) {
+    await deps.save(phone, {
+      surveyIndex: index + 1,
+      surveyAnswers: answers,
+      surveyOtherPending: undefined,
+      surveyPicks: undefined,
+    });
+    deps.send(formatSurveyQuestion(questions[index + 1]!, index + 2, questions.length));
+    return;
+  }
+
+  const done: Partial<AttendeeRecord> = {
+    surveyAnswers: answers,
+    surveyDone: true,
+    surveyOtherPending: undefined,
+    surveyPicks: undefined,
+  };
+  await deps.save(phone, done);
+  const next = { ...input, record: { ...record, ...done } as AttendeeRecord };
+  try {
+    await deps.updateLead?.(next.record);
+  } catch (e) {
+    console.error("Could not send the survey answers to the leads endpoint", e);
+  }
+  return afterSurvey(next, deps, rules);
+}
+
+/** After the survey: the free coffee for a winner, the paid menu for everyone else. */
+async function afterSurvey(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
+  const { record, phone } = input;
+  if (record.quizResult === "passed") {
+    if (!freeAvailable(record, rules)) {
+      return showCoffeeMenu(input, deps, "paid", { text: msg.freeUsed, list: listMsg.freeUsed });
+    }
+    if (!(await freeOpen(input, deps, rules))) {
+      return showCoffeeMenu(input, deps, "paid", { text: msg.freeOver, list: listMsg.freeOver });
+    }
+    return showCoffeeMenu(input, deps, "free", {
+      text: msg.surveyDonePassed,
+      list: listMsg.surveyDonePassed,
+    });
+  }
+  if (rules.failedQuizCanBuyPaidItems) {
+    return showCoffeeMenu(input, deps, "paid", {
+      text: msg.surveyDoneFailed,
+      list: listMsg.surveyDoneFailed,
+    });
+  }
+  await deps.save(phone, { stage: Stages.QUIZ_FAILED });
+  deps.send(msg.quizFailedEnd);
 }
 
 async function answerQuiz(
@@ -285,10 +428,11 @@ async function answerQuiz(
   // Last question answered.
   if (correct >= rules.passMark) {
     await deps.save(phone, { quizCorrect: correct, quizResult: "passed" });
-    const next = { ...input, record: { ...record, quizResult: "passed" as const } };
-    return freeAvailable(record, rules)
-      ? showCoffeeMenu(next, deps, "free", { text: msg.quizPassed, list: listMsg.quizPassed })
-      : showCoffeeMenu(next, deps, "paid", { text: msg.freeUsed, list: listMsg.freeUsed });
+    const next = {
+      ...input,
+      record: { ...record, quizCorrect: correct, quizResult: "passed" as const },
+    };
+    return startSurvey(next, deps, rules, "dev");
   }
 
   const attempts = record.quizAttempts ?? 1;
@@ -315,16 +459,12 @@ async function failQuiz(
   correct: number,
 ) {
   await deps.save(input.phone, { quizCorrect: correct, quizResult: "failed" });
-  if (rules.failedQuizCanBuyPaidItems) {
-    return showCoffeeMenu(
-      { ...input, record: { ...input.record, quizResult: "failed" } },
-      deps,
-      "paid",
-      { text: msg.quizFailedPaid, list: listMsg.quizFailedPaid },
-    );
-  }
-  await deps.save(input.phone, { stage: Stages.QUIZ_FAILED });
-  deps.send(msg.quizFailedEnd);
+  return startSurvey(
+    { ...input, record: { ...input.record, quizCorrect: correct, quizResult: "failed" } },
+    deps,
+    rules,
+    "general",
+  );
 }
 
 /** Free mode: free coffees only. Paid mode: priced coffees only. */
@@ -482,6 +622,10 @@ async function pickCoffee(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
   if (!freeAvailable(record, rules)) {
     // A stale free menu answered after the free coffee was taken.
     return showCoffeeMenu(input, deps, "paid", { text: msg.freeUsed, list: listMsg.freeUsed });
+  }
+  if (!(await freeOpen(input, deps, rules))) {
+    // The day's free coffees ran out while this menu was open.
+    return showCoffeeMenu(input, deps, "paid", { text: msg.freeOver, list: listMsg.freeOver });
   }
   await deps.save(phone, { cartCoffee: chosen.title, cartItems: [], cartAddOns: [] });
   return askAddOns(
@@ -864,6 +1008,7 @@ export async function placeOrder(
     status: "queued",
     channel: "whatsapp",
     amountPaise: order.amountPaise,
+    ...(order.coffee && isFree(order.coffee) ? { freeCoffee: true } : {}),
     ...(order.paymentId ? { paymentId: order.paymentId } : {}),
   };
   const n = await deps.addOrder(queued);

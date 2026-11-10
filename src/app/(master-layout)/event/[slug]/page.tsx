@@ -382,6 +382,28 @@ function EventPage({ params }: { params: Promise<{ slug: string }> }) {
               )}
             </div>
             <div className="space-y-1.5">
+              <Label htmlFor="freeCoffeeLimitPerDay">Free coffees per day</Label>
+              <Input
+                id="freeCoffeeLimitPerDay"
+                type="number"
+                min={0}
+                step={1}
+                inputMode="numeric"
+                value={internalEvent.freeCoffeeLimitPerDay ?? 300}
+                onChange={(ev) => {
+                  const n = Math.floor(Number(ev.target.value));
+                  updateEvent({
+                    ...internalEvent,
+                    freeCoffeeLimitPerDay: Number.isFinite(n) && n >= 0 ? n : undefined,
+                  });
+                }}
+              />
+              <p className="text-xs text-gray-400">
+                Counted per day in Bengaluru time. When this many have been given, the quiz and the survey are skipped and
+                customers go straight to the paid menu. 0 turns the free coffee off for the day.
+              </p>
+            </div>
+            <div className="space-y-1.5">
               <Label htmlFor="leadCollection">Lead Collection</Label>
               <Select
                 value={internalEvent.leadCollection ?? "MANUAL"}

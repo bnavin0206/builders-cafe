@@ -7,6 +7,9 @@ import {
   updateOrCreateSyncMapItem,
 } from "@/lib/twilio";
 import { cancelPaymentLink, createPaymentLink } from "@/lib/razorpay";
+import { fetchSyncListItems } from "@/lib/twilio";
+import { countFreeCoffees } from "./free-limit";
+import { buildLead, sendLead } from "./leads-sink";
 import { getCafeListMessage } from "@/scripts/fetchContentTemplates";
 import { redact, EventLengthInSeconds } from "@/lib/utils";
 import type { AttendeeRecord, Event } from "@/types";
@@ -47,6 +50,11 @@ export function realDeps(event: Event, sender: string, from: string): CafeDeps {
         console.error("List picker unavailable, sending the text menu", e);
         return false;
       }
+    },
+    freeCoffeesToday: async () =>
+      countFreeCoffees(await fetchSyncListItems(event.slug), new Date()),
+    updateLead: async (record) => {
+      await sendLead(buildLead(record, event));
     },
     addOrder: async (order) =>
       addOrderToQueue(event.slug, { ...order, address: await redact(sender) }),

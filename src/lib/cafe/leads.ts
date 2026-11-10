@@ -5,6 +5,7 @@ const VERIFIED_STAGES: string[] = [
   Stages.VERIFIED_USER,
   Stages.BLOCKED,
   Stages.QUIZ,
+  Stages.SURVEY,
   Stages.QUIZ_FAILED,
   Stages.PICK_COFFEE,
   Stages.PICK_ADDONS,
@@ -37,6 +38,12 @@ export const LEAD_HEADER = [
   "QuizResult",
   "Company",
   "City",
+  "SurveyType",
+  "SurveyQ1",
+  "SurveyQ2",
+  "SurveyQ3",
+  "SurveyQ4",
+  "SurveyQ5",
 ];
 
 export function leadRow(a: Partial<AttendeeRecord>): string {
@@ -51,6 +58,8 @@ export function leadRow(a: Partial<AttendeeRecord>): string {
     a.quizResult,
     a.company,
     a.city,
+    a.surveyKind,
+    ...[0, 1, 2, 3, 4].map((i) => a.surveyAnswers?.[i]),
   ]
     .map(escapeCsv)
     .join(",");

@@ -17,6 +17,12 @@ export const cafeRules = {
   // CLIENT: one free coffee per attendee for the whole event; paid orders have
   // no limit. Enforced through the free coffee being used once.
   freeCoffeesPerEvent: 1,
+  // CLIENT: at most this many free coffees a day (Bengaluru time). The admin can
+  // change it on the event page; this is the default. After it is reached the
+  // quiz and the survey are skipped and customers go to the paid menu.
+  freeCoffeesPerDay: 300,
+  // CLIENT: a typed "Other" survey answer is cut at this many characters.
+  surveyOtherMaxChars: 200,
   // DEFAULT: at most this many items in one order (the free coffee counts as
   // one). Paid menus let attendees pick several items, repeats allowed.
   maxItemsPerOrder: 10,

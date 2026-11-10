@@ -102,7 +102,7 @@ class Sim {
     return this.lists[this.lists.length - 1];
   }
 
-  private input(message: string) {
+  input(message: string) {
     return { message, event: this.evt, phone: PHONE, record: this.record };
   }
 
@@ -130,14 +130,22 @@ class Sim {
     await this.say(String(option + 1));
   }
 
-  async passQuiz() {
-    await this.start();
-    for (let i = 0; i < this.rules.quizQuestionCount; i++) await this.answer(true);
+  /** Answers every survey question with the first option, until the survey ends. */
+  async finishSurvey() {
+    for (let i = 0; i < 10 && this.record.stage === Stages.SURVEY; i++) await this.say("1");
   }
 
-  async failQuiz() {
+  /** Takes the quiz with every answer right, then the survey (unless `survey` is false). */
+  async passQuiz(survey = true) {
+    await this.start();
+    for (let i = 0; i < this.rules.quizQuestionCount; i++) await this.answer(true);
+    if (survey) await this.finishSurvey();
+  }
+
+  async failQuiz(survey = true) {
     await this.start();
     for (let i = 0; i < this.rules.quizQuestionCount; i++) await this.answer(false);
+    if (survey) await this.finishSurvey();
   }
 
   /** Simulates Razorpay confirming the pending payment. */
@@ -199,6 +207,8 @@ describe("quiz", () => {
     await s.answer(true);
     await s.answer(true);
     expect(s.record.quizResult).toBe("failed");
+    expect(s.record.stage).toBe(Stages.SURVEY);
+    await s.finishSurvey();
     expect(s.record.stage).toBe(Stages.PICK_COFFEE);
     expect(s.last).toContain("1. Cold Brew (₹120)");
     expect(s.last).not.toContain("Americano");
@@ -247,6 +257,236 @@ describe("quiz", () => {
     expect(s.last).toContain("not enough");
     await s.say("menu");
     expect(s.last).toContain("not enough");
+  });
+});
+
+describe("survey after the quiz", () => {
+  test("all 3 correct: the developer survey, 5 questions, then the free coffee", async () => {
+    const s = new Sim();
+    await s.passQuiz(false);
+    expect(s.record.stage).toBe(Stages.SURVEY);
+    expect(s.record.surveyKind).toBe("dev");
+    expect(s.sent.some((m) => m.includes("5 quick questions"))).toBe(true);
+    expect(s.last).toContain("Question 1 of 5");
+    expect(s.last).toContain("1. Managing project deadlines and workloads");
+    await s.say("2");
+    expect(s.last).toContain("Question 2 of 5");
+    await s.say("1");
+    await s.say("3");
+    expect(s.last).toContain("Question 4 of 5");
+    expect(s.last).toContain("Reply with the numbers of your answers");
+    await s.say("1, 3");
+    expect(s.last).toContain("Question 5 of 5");
+    await s.say("4");
+    expect(s.record.surveyDone).toBe(true);
+    expect(s.record.surveyAnswers).toEqual([
+      "Keeping up with evolving technologies and developing new skills",
+      "Yes",
+      "AI has helped streamline workloads and improve efficiency",
+      "Debugging and fixing existing code; Managing tools and system integrations",
+      "I do not use AI outside work",
+    ]);
+    expect(s.record.stage).toBe(Stages.PICK_COFFEE);
+    expect(s.last).toContain("Your coffee is free");
+    expect(s.last).toContain("1. Americano (FREE)");
+  });
+
+  test("not all correct: the general survey, 3 questions, then the paid menu", async () => {
+    const s = new Sim();
+    await s.failQuiz(false);
+    expect(s.record.stage).toBe(Stages.SURVEY);
+    expect(s.record.surveyKind).toBe("general");
+    expect(s.last).toContain("Question 1 of 3");
+    expect(s.last).toContain("1. Increased");
+    await s.say("3");
+    await s.say("2");
+    expect(s.last).toContain("Question 3 of 3");
+    await s.say("1,2");
+    expect(s.record.surveyAnswers).toEqual([
+      "Decreased",
+      "Helped me complete certain tasks faster",
+      "Problem-solving and critical thinking; Creativity and innovation",
+    ]);
+    expect(s.record.stage).toBe(Stages.PICK_COFFEE);
+    expect(s.last).toContain("not enough for a free coffee");
+    expect(s.last).toContain("1. Cold Brew (₹120)");
+  });
+
+  test("the survey is required: a wrong reply repeats the question and nothing is skipped", async () => {
+    const s = new Sim();
+    await s.failQuiz(false);
+    await s.say("banana");
+    expect(s.sent.some((m) => m === "Please reply with the number of your answer.")).toBe(true);
+    expect(s.last).toContain("Question 1 of 3");
+    await s.say("9");
+    await s.say("1,2"); // one answer only on a single-choice question
+    await s.say("skip");
+    expect(s.record.surveyIndex).toBe(0);
+    expect(s.record.stage).toBe(Stages.SURVEY);
+    await s.say("menu"); // a nudge asks the same question again
+    expect(s.last).toContain("Question 1 of 3");
+    expect(s.record.surveyIndex).toBe(0);
+  });
+
+  test("Other asks for text, which is saved with the other choices and cut at 200 characters", async () => {
+    const s = new Sim();
+    await s.failQuiz(false);
+    await s.say("1");
+    await s.say("1");
+    await s.say("1,5");
+    expect(s.last).toBe("Please type your answer.");
+    expect(s.record.surveyOtherPending).toBe(true);
+    await s.say("   ");
+    expect(s.last).toBe("Please type your answer.");
+    await s.say("Docs   and\nrunbooks " + "x".repeat(300));
+    expect(s.record.surveyDone).toBe(true);
+    const other = s.record.surveyAnswers![2]!;
+    expect(other.startsWith("Problem-solving and critical thinking; Other: Docs and runbooks xxx")).toBe(true);
+    expect(other.slice("Problem-solving and critical thinking; Other: ".length).length).toBe(200);
+  });
+
+  test("a numbered survey also works when lists are on, and numbers can have spaces", async () => {
+    const s = new Sim();
+    s.enableLists();
+    await s.passQuiz(false);
+    await s.say("1");
+    await s.say("1");
+    await s.say("1");
+    await s.say("1 2 3");
+    expect(s.record.surveyAnswers![3]).toBe(
+      "Debugging and fixing existing code; Documentation and reporting; Managing tools and system integrations",
+    );
+  });
+
+  test("the lead is sent again with the survey answers", async () => {
+    const s = new Sim();
+    const leads: AttendeeRecord[] = [];
+    s.deps.updateLead = async (r) => {
+      leads.push(r);
+    };
+    await s.failQuiz();
+    expect(leads).toHaveLength(1);
+    expect(leads[0]).toMatchObject({ surveyKind: "general", surveyDone: true });
+    expect(leads[0]!.surveyAnswers).toHaveLength(3);
+  });
+
+  test("a survey that fails to send the lead still lets the customer order", async () => {
+    const s = new Sim();
+    s.deps.updateLead = async () => {
+      throw new Error("leads endpoint down");
+    };
+    await s.failQuiz();
+    expect(s.record.stage).toBe(Stages.PICK_COFFEE);
+  });
+
+  test("someone who has already done the survey is not asked again", async () => {
+    const s = new Sim();
+    await s.failQuiz();
+    s.record.stage = Stages.VERIFIED_USER;
+    await s.say("hi");
+    expect(s.record.stage).toBe(Stages.PICK_COFFEE);
+    expect(s.sent.filter((m) => m.startsWith("Question 1 of")).length).toBe(2); // quiz + survey, once each
+  });
+
+  test("a re-scan in the middle of the survey repeats the current question", async () => {
+    const s = new Sim();
+    await s.failQuiz(false);
+    await s.say("2");
+    await enter(s.input(""), s.deps, s.rules);
+    expect(s.last).toContain("Question 2 of 3");
+  });
+});
+
+describe("limit of free coffees a day", () => {
+  const withToday = (n: number, limit?: number) => {
+    const evt = event();
+    if (limit !== undefined) evt.freeCoffeeLimitPerDay = limit;
+    const s = new Sim(evt);
+    s.deps.freeCoffeesToday = async () => n;
+    return s;
+  };
+
+  test("under the limit nothing changes: quiz, survey, free coffee", async () => {
+    const s = withToday(299);
+    await s.passQuiz();
+    expect(s.record.stage).toBe(Stages.PICK_COFFEE);
+    expect(s.last).toContain("(FREE)");
+  });
+
+  test("at the limit there is no quiz and no survey: straight to the paid menu", async () => {
+    const s = withToday(300);
+    await s.start();
+    expect(s.record.stage).toBe(Stages.PICK_COFFEE);
+    expect(s.record.menuMode).toBe("paid");
+    expect(s.sent.some((m) => m.includes("Free coffees are over for today"))).toBe(true);
+    expect(s.sent.some((m) => m.includes("Question 1 of"))).toBe(false);
+    expect(s.record.quizAttempts).toBeUndefined();
+    expect(s.last).toContain("1. Cold Brew (₹120)");
+    expect(s.last).not.toContain("(FREE)");
+  });
+
+  test("the limit is a setting on the event, and 0 means no free coffee today", async () => {
+    const s = withToday(5, 5);
+    await s.start();
+    expect(s.sent.some((m) => m.includes("Free coffees are over for today"))).toBe(true);
+    const t = withToday(0, 0);
+    await t.start();
+    expect(t.sent.some((m) => m.includes("Free coffees are over for today"))).toBe(true);
+    const u = withToday(299, 400);
+    await u.start();
+    expect(u.record.stage).toBe(Stages.QUIZ);
+  });
+
+  test("a winner who finishes the survey after the limit was reached goes to the paid menu", async () => {
+    const evt = event();
+    const s = new Sim(evt);
+    let today = 10;
+    s.deps.freeCoffeesToday = async () => today;
+    await s.passQuiz(false);
+    today = 300; // the last free coffee went while this customer answered the survey
+    await s.finishSurvey();
+    expect(s.record.stage).toBe(Stages.PICK_COFFEE);
+    expect(s.record.menuMode).toBe("paid");
+    expect(s.last).toContain("Free coffees are over for today");
+  });
+
+  test("a winner who taps the free coffee after the limit was reached goes to the paid menu", async () => {
+    const s = new Sim();
+    let today = 10;
+    s.deps.freeCoffeesToday = async () => today;
+    await s.passQuiz();
+    expect(s.record.menuMode).toBe("free");
+    today = 300;
+    await s.say("1");
+    expect(s.record.menuMode).toBe("paid");
+    expect(s.last).toContain("Free coffees are over for today");
+    expect(s.record.cartCoffee).toBeUndefined();
+  });
+
+  test("paid orders never count and are never limited", async () => {
+    const s = withToday(300);
+    await s.start();
+    await s.say("1");
+    await s.say("0");
+    await s.say("0");
+    expect(s.links[0]!.amountPaise).toBe(12000);
+  });
+
+  test("an order with the free coffee is marked so it counts; a paid-only order is not", async () => {
+    const s = new Sim();
+    await s.passQuiz();
+    await s.say("1");
+    await s.say("0");
+    await s.say("0");
+    expect(s.orders[0]).toMatchObject({ freeCoffee: true });
+
+    const t = new Sim();
+    await t.failQuiz();
+    await t.say("1");
+    await t.say("0");
+    await t.say("0");
+    await t.pay();
+    expect(t.orders[0]!.freeCoffee).toBeUndefined();
   });
 });
 

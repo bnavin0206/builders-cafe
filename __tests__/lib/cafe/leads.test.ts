@@ -38,7 +38,7 @@ describe("leads export", () => {
         company: "Acme Ltd",
         city: "Chennai",
       }),
-    ).toBe("Asha Rao,asha@example.com,India,false,true,builders-cafe,FIRST_ORDER,passed,Acme Ltd,Chennai");
+    ).toBe("Asha Rao,asha@example.com,India,false,true,builders-cafe,FIRST_ORDER,passed,Acme Ltd,Chennai,,,,,,");
   });
 
   test("escapes commas, quotes and newlines", () => {

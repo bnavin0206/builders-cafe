@@ -17,6 +17,23 @@ replying with a number or an item name.
    the middle of a step just gets the current prompt again. Everyone else
    gets 3 random questions from the bank in `src/config/quiz-bank.ts`
    (20 placeholders). One attempt.
+4a. Survey (required, no skip), right after the quiz result. All 3 correct: the
+   developer survey (5 questions). Anything else: the general survey (3
+   questions). Wording is in `src/config/surveys.ts`. Each question is a numbered
+   text message; the customer replies with a number, or numbers like `1,3` on
+   "select all" questions. Choosing "Other" asks "Please type your answer" (kept
+   to 200 characters, `surveyOtherMaxChars`). The answers are saved on the
+   attendee record and sent again to the leads endpoint as `surveyType` and
+   `surveyAnswers` (the CSV has SurveyType and SurveyQ1 to SurveyQ5).
+4b. Free coffee limit: at most 300 a day (Bengaluru time), set on the event page
+   ("Free coffees per day"; default `freeCoffeesPerDay` in `cafe-rules.ts`). It is
+   counted from today's orders that carry `freeCoffee: true` and are not
+   cancelled, so a cancelled order gives its coffee back. Once the limit is
+   reached there is no quiz and no survey: the customer is told "Free coffees
+   are over for today" and goes straight to the paid menu. A winner who is
+   still answering the survey or looking at the free menu when the limit is
+   reached is moved to the paid menu too. Two orders placed at the same instant
+   can overshoot the limit by a few.
 5. All correct: free coffee, then add-ons (sugar and others, from the event's
    modifier list), then optional paid items: several can be picked, one at a
    time in the list (then Done) or as numbers in one reply ("1,3"), repeats

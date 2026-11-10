@@ -52,6 +52,8 @@ vi.mock("@/lib/twilio", () => {
       items.push(data);
       return { index: items.length };
     },
+    fetchSyncListItems: async (list: string) =>
+      (world.lists.get(list) ?? []).map((data) => ({ data, dateCreated: new Date() })),
     sendMessage: (to: string, body: string, contentSid?: string, contentVariables?: string) =>
       void world.sent.push({ to, body, contentSid, contentVariables }),
     createVerification: async () => ({ sid: "VE1" }),
@@ -158,12 +160,17 @@ class Phone {
     await this.say(email);
     await this.say(company);
   }
+  /** Answers every survey question with the first option. */
+  async finishSurvey() {
+    for (let i = 0; i < 10 && this.record.stage === "SURVEY"; i++) await this.say("1");
+  }
   async passQuiz() {
     for (let i = 0; i < 3; i++) {
       const id = this.record.quizQuestions[this.record.quizIndex];
       const q = quizBank.find((x) => x.id === id)!;
       await this.say(String(q.correct + 1));
     }
+    await this.finishSurvey();
   }
 }
 
@@ -305,6 +312,7 @@ describe("full attendee journey through the webhooks", () => {
       const q = quizBank.find((x) => x.id === id)!;
       await p.say(String(((q.correct + 1) % q.options.length) + 1));
     }
+    await p.finishSurvey();
     expect(p.record.quizResult).toBe("failed");
     expect(p.last).toContain("1. Cold Brew (₹120)");
     expect(p.last).not.toContain("Americano");
@@ -321,6 +329,7 @@ describe("full attendee journey through the webhooks", () => {
       const q = quizBank.find((x) => x.id === id)!;
       await p.say(String(((q.correct + 1) % q.options.length) + 1));
     }
+    await p.finishSurvey();
     await p.say("1, 1, 2"); // two Cold Brew and a Veg Puff
     expect(p.last).toContain("Add-ons for your drinks");
     await p.say("1"); // No sugar
@@ -355,6 +364,7 @@ describe("full attendee journey through the webhooks", () => {
       const q = quizBank.find((x) => x.id === id)!;
       await p.say(String(((q.correct + 1) % q.options.length) + 1));
     }
+    await p.finishSurvey();
     expect(p.lists.at(-1)!.rows.map((r) => r.title)).toEqual(["Cold Brew", "Veg Puff", "Cheese Croissant"]);
     await p.say("2"); // Veg Puff
     expect(p.lists.at(-1)!.prompt).toContain("So far: Veg Puff");
@@ -467,6 +477,7 @@ describe("full attendee journey through the webhooks", () => {
       const q = quizBank.find((x) => x.id === id)!;
       await p.say(String(((q.correct + 1) % q.options.length) + 1)); // fails the quiz
     }
+    await p.finishSurvey();
     expect(p.record.quizResult).toBe("failed");
     // Same number, now texting from SMS instead of WhatsApp.
     const res = await messaging(

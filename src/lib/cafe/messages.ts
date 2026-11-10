@@ -20,6 +20,19 @@ export const msg = {
     "You have already taken part in the quiz, so you can order from our paid menu. Reply with the numbers of the items you want, like 1 or 1,3.",
   freeUsed:
     "You have already had your free coffee. You can still order from our paid menu. Reply with the numbers of the items you want, like 1 or 1,3.",
+  freeOver:
+    "Free coffees are over for today. You can still order from our paid menu. Reply with the numbers of the items you want, like 1 or 1,3.",
+  surveyIntroDev: (count: number) =>
+    `All correct! Before your free coffee, please answer ${count} quick questions.`,
+  surveyIntroGeneral: (count: number) =>
+    `Thanks for playing! Before we go on, please answer ${count} quick questions.`,
+  surveySingleInvalid: "Please reply with the number of your answer.",
+  surveyMultiInvalid: "Please reply with the numbers of your answers, like 1,3.",
+  surveyTypeOther: "Please type your answer.",
+  surveyDonePassed:
+    "Thank you! Your coffee is free. Choose it by replying with its number.",
+  surveyDoneFailed:
+    "Thank you! Sorry, that was not enough for a free coffee. You can still order from our paid menu. Reply with the numbers of the items you want, like 1 or 1,3.",
   blocked:
     "Sorry, we found that you have already taken part, so you can't take part again. Thank you!",
   coffeePrompt: "Choose your coffee by replying with its number:",
@@ -67,6 +80,11 @@ export const listMsg = {
     "You have already taken part in the quiz, so you can order from our paid menu. Tap Choose and pick items one at a time, then tap Done.",
   freeUsed:
     "You have already had your free coffee. You can still order from our paid menu. Tap Choose and pick items one at a time, then tap Done.",
+  freeOver:
+    "Free coffees are over for today. You can still order from our paid menu. Tap Choose and pick items one at a time, then tap Done.",
+  surveyDonePassed: "Thank you! Your coffee is free. Tap Choose to pick it.",
+  surveyDoneFailed:
+    "Thank you! Sorry, that was not enough for a free coffee. You can still order from our paid menu. Tap Choose and pick items one at a time, then tap Done.",
   coffeePrompt: "Choose your coffee from the list:",
   notOnMenu: "Sorry, that is not on the menu. Tap Choose to pick an item.",
   addOnsPrompt: (coffee: string) =>
