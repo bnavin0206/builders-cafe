@@ -18,6 +18,8 @@
 .board-bar { display: flex; align-items: center; justify-content: space-between; padding: 0 calc(2.5 * var(--r)); color: var(--chalk); }
 .board-brand { font-family: "Big Shoulders Display", Impact, sans-serif; font-weight: 900; font-size: calc(2.75 * var(--r)); letter-spacing: .06em; text-transform: uppercase; line-height: 1; }
 .board-brand small { font-family: "JetBrains Mono", ui-monospace, monospace; font-weight: 500; font-size: calc(1.15 * var(--r)); letter-spacing: .12em; margin-left: calc(1.25 * var(--r)); color: var(--marigold); }
+.board-end { display: flex; align-items: center; gap: calc(2.5 * var(--r)); }
+.board-logo { height: calc(2.5 * var(--r)); width: auto; display: block; }
 .board-clock { font-family: "JetBrains Mono", ui-monospace, monospace; font-weight: 700; font-size: calc(2 * var(--r)); letter-spacing: .04em; display: flex; align-items: center; gap: calc(.9 * var(--r)); }
 .board-clock::before { content: ""; width: calc(.8 * var(--r)); height: calc(.8 * var(--r)); border-radius: 50%; background: var(--chilli); }
 .board-clock--stale { opacity: .7; }
@@ -72,6 +74,8 @@
   .board-bar { padding: 0 calc(2 * var(--r)); }
   .board-brand { font-size: calc(2.6 * var(--r)); }
   .board-brand small { font-size: calc(1 * var(--r)); margin-left: calc(.9 * var(--r)); }
+  .board-end { gap: calc(2 * var(--r)); }
+  .board-logo { height: calc(2.2 * var(--r)); }
   .board-clock { font-size: calc(1.7 * var(--r)); gap: calc(.7 * var(--r)); }
   .board-clock::before { width: calc(.7 * var(--r)); height: calc(.7 * var(--r)); }
 

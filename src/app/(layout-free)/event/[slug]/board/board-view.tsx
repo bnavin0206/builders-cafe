@@ -131,7 +131,11 @@ export function BoardView({
         <div className="board-brand">
           Builder&apos;s Cafe <small>ORDER BOARD</small>
         </div>
-        <Clock stale={stale} />
+        <div className="board-end">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="board-logo" src="/twilio.svg" alt="Twilio" />
+          <Clock stale={stale} />
+        </div>
       </header>
       {notice ? (
         <main className="board-panels">
