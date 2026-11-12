@@ -51,3 +51,19 @@ describe("invoice", () => {
     expect(paymentIdFromToken("garbage")).toBeUndefined();
   });
 });
+
+describe("test invoices", () => {
+  it("use their own TEST/MMC/ series and say so on the page", () => {
+    expect(formatInvoiceNumber(1, true)).toBe("TEST/MMC/00001");
+    const inv = buildInvoice({ ...base, test: true, amountPaise: 10000, items: [{ title: "Latte", price: 100 }] });
+    expect(inv.number).toBe("TEST/MMC/00001");
+    expect(invoiceHtml(inv)).toContain("TEST INVOICE");
+    expect(invoiceHtml(buildInvoice({ ...base, amountPaise: 10000, items: [{ title: "Latte", price: 100 }] }))).not.toContain("TEST INVOICE");
+  });
+  it("is test mode unless Razorpay has live keys", async () => {
+    const { isTestMode } = await import("./invoice");
+    expect(isTestMode({ RAZORPAY_KEY_ID: "rzp_test_x" })).toBe(true);
+    expect(isTestMode({})).toBe(true);
+    expect(isTestMode({ RAZORPAY_KEY_ID: "rzp_live_x" })).toBe(false);
+  });
+});

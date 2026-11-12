@@ -1,19 +1,21 @@
 import { getSyncService } from "@/lib/twilio";
 import type { Invoice } from "./invoice";
-import { buildInvoice } from "./invoice";
+import { buildInvoice, isTestMode } from "./invoice";
 
 const COUNTER = "InvoiceCounter";
+const TEST_COUNTER = "InvoiceCounterTest";
+const counterName = (test: boolean) => (test ? TEST_COUNTER : COUNTER);
 const MAP = "Invoices";
 
-async function ensure(kind: "doc" | "map") {
+async function ensure(kind: "doc" | "map", name = COUNTER) {
   const service = await getSyncService();
   try {
-    if (kind === "doc") await service.documents()(COUNTER).fetch();
+    if (kind === "doc") await service.documents()(name).fetch();
     else await service.syncMaps()(MAP).fetch();
   } catch (e: any) {
     if (e?.status !== 404) throw e;
     try {
-      if (kind === "doc") await service.documents().create({ uniqueName: COUNTER, data: { last: 0 } });
+      if (kind === "doc") await service.documents().create({ uniqueName: name, data: { last: 0 } });
       else await service.syncMaps().create({ uniqueName: MAP });
     } catch (c: any) {
       if (c?.status !== 409) throw c;
@@ -23,14 +25,15 @@ async function ensure(kind: "doc" | "map") {
 }
 
 /** Next invoice number. Safe when two payments arrive together. */
-async function nextSeq(): Promise<number> {
-  const service = await ensure("doc");
+async function nextSeq(test: boolean): Promise<number> {
+  const name = counterName(test);
+  const service = await ensure("doc", name);
   for (let attempt = 0; attempt < 10; attempt++) {
-    const doc = await service.documents()(COUNTER).fetch();
+    const doc = await service.documents()(name).fetch();
     const next = Number((doc.data as { last?: number }).last ?? 0) + 1;
     try {
       // @ts-ignore ifMatch is supported by the API but missing from the typings
-      await service.documents()(COUNTER).update({ data: { last: next }, ifMatch: doc.revision });
+      await service.documents()(name).update({ data: { last: next }, ifMatch: doc.revision });
       return next;
     } catch (e: any) {
       if (e?.status !== 412) throw e;
@@ -55,8 +58,9 @@ export async function issueInvoice(
 ): Promise<Invoice> {
   const existing = await getInvoiceByPayment(args.paymentId);
   if (existing) return existing;
-  const seq = await nextSeq();
-  const inv = buildInvoice({ ...args, seq, issuedAt: new Date() });
+  const test = isTestMode();
+  const seq = await nextSeq(test);
+  const inv = buildInvoice({ ...args, seq, issuedAt: new Date(), test });
   const service = await ensure("map");
   try {
     await service.syncMaps()(MAP).syncMapItems.create({ key: args.paymentId, data: inv });

@@ -11,5 +11,7 @@ export const SELLER = {
   gstPercent: 5,
   /** Invoice numbers look like MMC/TBC/00001. */
   numberPrefix: "MMC/TBC/",
+  /** Used while Razorpay is on test keys, so test sales never take a real number. */
+  testNumberPrefix: "TEST/MMC/",
   numberDigits: 5,
 };

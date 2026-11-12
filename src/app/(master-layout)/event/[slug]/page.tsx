@@ -359,29 +359,7 @@ function EventPage({ params }: { params: Promise<{ slug: string }> }) {
               <Label htmlFor="eventSlug">Slug</Label>
               <Input disabled id="eventSlug" placeholder="Auto-generated" value={internalEvent.slug} />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="maxOrders">Max Orders Per Customer / Day</Label>
-              <Input
-                id="maxOrders"
-                type="number"
-                min={1}
-                required
-                aria-invalid={touched.maxOrders && !!fieldErrors.maxOrders}
-                className={touched.maxOrders && fieldErrors.maxOrders ? "border-red-500 focus-visible:ring-red-500" : ""}
-                value={internalEvent.maxOrders}
-                onChange={(ev) =>
-                  updateEvent({ ...internalEvent, maxOrders: parseInt(ev.target.value) })
-                }
-                onBlur={() => markTouched("maxOrders")}
-              />
-              {touched.maxOrders && fieldErrors.maxOrders ? (
-                <p className="text-xs text-red-500">{fieldErrors.maxOrders}</p>
-              ) : (
-                <p className="text-xs text-gray-400">
-                  50 or more is treated as unlimited — order confirmations won&apos;t mention a daily cap.
-                </p>
-              )}
-            </div>
+            {/* "Max Orders Per Customer / Day" is hidden: the cafe flow does not use it (the value stays at its default). */}
             <div className="space-y-1.5">
               <Label htmlFor="freeCoffeeLimitPerDay">Free coffees per day</Label>
               <Input

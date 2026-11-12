@@ -27,6 +27,8 @@ export interface Invoice {
   orderNumber: number;
   paymentId: string;
   customer: { name?: string; phone?: string; email?: string };
+  /** True for a test sale (number starts TEST/). */
+  test?: boolean;
   /** How it was paid. Unset means online through Razorpay. */
   payMode?: PayMode;
   lines: InvoiceLine[];
@@ -36,8 +38,12 @@ export interface Invoice {
   totalPaise: number;
 }
 
-export const formatInvoiceNumber = (seq: number) =>
-  SELLER.numberPrefix + String(seq).padStart(SELLER.numberDigits, "0");
+/** True unless Razorpay is on live keys. Test sales get their own TEST/MMC/ series. */
+export const isTestMode = (env: Record<string, string | undefined> = process.env) =>
+  !/^rzp_live_/.test(env.RAZORPAY_KEY_ID ?? "");
+
+export const formatInvoiceNumber = (seq: number, test = false) =>
+  (test ? SELLER.testNumberPrefix : SELLER.numberPrefix) + String(seq).padStart(SELLER.numberDigits, "0");
 
 /** Splits a GST-inclusive amount into taxable value and CGST + SGST (same state). */
 export function splitInclusive(grossPaise: number, percent = SELLER.gstPercent) {
@@ -63,6 +69,7 @@ export function buildInvoice(input: {
   items: Array<{ title: string; price?: number }>;
   customer: Invoice["customer"];
   payMode?: PayMode;
+  test?: boolean;
 }): Invoice {
   const grouped = new Map<string, { qty: number; unit: number }>();
   for (const i of input.items) {
@@ -90,7 +97,8 @@ export function buildInvoice(input: {
   }
   const sum = (k: "taxablePaise" | "cgstPaise" | "sgstPaise") => lines.reduce((s, l) => s + l[k], 0);
   return {
-    number: formatInvoiceNumber(input.seq),
+    number: formatInvoiceNumber(input.seq, input.test),
+    ...(input.test ? { test: true } : {}),
     seq: input.seq,
     issuedAt: input.issuedAt.toISOString(),
     eventName: input.eventName,
@@ -149,7 +157,7 @@ th{background:#f3f3f3;font-size:12px}td.n,th.n{text-align:right}
 .tot{width:300px;margin-left:auto}.tot td{border:0;padding:3px 8px}.big td{font-weight:700;font-size:15px;border-top:2px solid #111}
 .scroll{overflow-x:auto}@media print{button{display:none}}
 </style></head><body>
-<div class=top><div><h1>TAX INVOICE</h1><div class=mut>Original for recipient</div></div>
+${inv.test ? '<div style="background:#fde8e8;color:#a00;padding:8px;text-align:center;font-weight:700;margin-bottom:10px">TEST INVOICE: not a real sale, do not use for accounts</div>' : ""}<div class=top><div><h1>TAX INVOICE</h1><div class=mut>Original for recipient</div></div>
 <div class=r><b>Invoice No:</b> ${esc(inv.number)}<br><b>Date:</b> ${istDateTime(inv.issuedAt)}</div></div>
 <div class=box><div><b>${esc(SELLER.name)}</b><br>${SELLER.address.map(esc).join("<br>")}<br><b>GSTIN:</b> ${SELLER.gstin}</div>
 <div><b>Billed to</b><br>${esc(c.name || "Customer")}${c.phone ? `<br>${esc(c.phone)}` : ""}${c.email ? `<br>${esc(c.email)}` : ""}<br>Place of supply: ${SELLER.stateName} (${SELLER.stateCode})</div></div>
