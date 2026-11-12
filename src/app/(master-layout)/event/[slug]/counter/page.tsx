@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type Item = { title: string; price: number; veg: boolean };
 type Mode = "pos" | "upi" | "cash";
-type Done = { orderNumber: number; invoiceNumber: string; totalPaise: number; invoiceUrl: string | null; qr: string | null };
+type Done = { training?: boolean; orderNumber: number; invoiceNumber: string; totalPaise: number; invoiceUrl: string | null; qr: string | null };
 
 const MODES: Array<[Mode, string]> = [
   ["pos", "POS machine"],
@@ -25,6 +25,7 @@ function CounterPage({ params }: { params: Promise<{ slug: string }> }) {
   const [cart, setCart] = useState<Record<string, number>>({});
   const [mode, setMode] = useState<Mode | null>(null);
   const [saleId, setSaleId] = useState(newId);
+  const [training, setTraining] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState<Done | null>(null);
@@ -47,7 +48,7 @@ function CounterPage({ params }: { params: Promise<{ slug: string }> }) {
   const submit = async () => {
     if (!mode || count === 0) return;
     const label = MODES.find((m) => m[0] === mode)![1];
-    if (!window.confirm(`Payment of ${rs(total)} received by ${label}? This creates the invoice.`)) return;
+    if (!window.confirm(training ? `TRAINING: practise a ${rs(total)} sale by ${label}? No order is created.` : `Payment of ${rs(total)} received by ${label}? This creates the invoice.`)) return;
     setBusy(true);
     setError("");
     try {
@@ -57,6 +58,7 @@ function CounterPage({ params }: { params: Promise<{ slug: string }> }) {
           event: slug,
           saleId,
           mode,
+          training,
           lines: Object.entries(cart).filter(([, q]) => q > 0).map(([title, qty]) => ({ title, qty })),
         }),
       });
@@ -84,7 +86,7 @@ function CounterPage({ params }: { params: Promise<{ slug: string }> }) {
       <main className="mx-auto max-w-md space-y-4 p-4">
         <Card>
           <CardHeader>
-            <CardTitle>Order #{done.orderNumber} created</CardTitle>
+            <CardTitle>{done.training ? "Training sale (no order created)" : `Order #${done.orderNumber} created`}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-center">
             <p>
@@ -118,6 +120,15 @@ function CounterPage({ params }: { params: Promise<{ slug: string }> }) {
       <Card>
         <CardHeader>
           <CardTitle>Counter sale</CardTitle>
+          <label className="flex items-center gap-2 pt-2 text-sm">
+            <input type="checkbox" checked={training} onChange={(e) => setTraining(e.target.checked)} />
+            Training mode (practice: TEST invoice, no order)
+          </label>
+          {training && (
+            <p className="rounded bg-yellow-100 px-2 py-1 text-sm font-semibold text-yellow-900">
+              TRAINING: nothing here is a real sale.
+            </p>
+          )}
         </CardHeader>
         <CardContent className="space-y-2">
           {items.length === 0 && !error && <p className="text-sm text-gray-500">Loading the menu…</p>}
@@ -148,7 +159,7 @@ function CounterPage({ params }: { params: Promise<{ slug: string }> }) {
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <Button className="w-full" disabled={busy || !mode || count === 0} onClick={submit}>
-            {busy ? "Creating…" : "Payment received: create invoice"}
+            {busy ? "Creating…" : training ? "Practise: create TEST invoice" : "Payment received: create invoice"}
           </Button>
         </CardContent>
       </Card>

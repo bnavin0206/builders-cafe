@@ -49,3 +49,13 @@ describe("counter sale", () => {
     expect(csv).toContain("MMC/TBC/00002");
   });
 });
+
+describe("training sale invoice", () => {
+  it("hides the order line when there is no order", () => {
+    const inv = buildInvoice({ seq: 1, issuedAt: new Date(), eventName: "Cafe", orderNumber: 0, paymentId: "ctr_trn_1", amountPaise: 10000, items: [{ title: "Cafe Latte", price: 100 }], customer: {}, payMode: "cash", test: true });
+    const html = invoiceHtml(inv);
+    expect(html).not.toContain("order #");
+    expect(html).toContain("TEST INVOICE");
+    expect(inv.number).toBe("TEST/MMC/00001");
+  });
+});

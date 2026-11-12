@@ -54,13 +54,14 @@ export async function getInvoiceByPayment(paymentId: string): Promise<Invoice | 
 
 /** Creates the invoice for a payment once; asking again returns the same one. */
 export async function issueInvoice(
-  args: Omit<Parameters<typeof buildInvoice>[0], "seq" | "issuedAt">,
+  args: Omit<Parameters<typeof buildInvoice>[0], "seq" | "issuedAt" | "test"> & { forceTest?: boolean },
 ): Promise<Invoice> {
   const existing = await getInvoiceByPayment(args.paymentId);
   if (existing) return existing;
-  const test = isTestMode();
+  const test = args.forceTest || isTestMode();
   const seq = await nextSeq(test);
-  const inv = buildInvoice({ ...args, seq, issuedAt: new Date(), test });
+  const { forceTest: _f, ...rest } = args;
+  const inv = buildInvoice({ ...rest, seq, issuedAt: new Date(), test });
   const service = await ensure("map");
   try {
     await service.syncMaps()(MAP).syncMapItems.create({ key: args.paymentId, data: inv });

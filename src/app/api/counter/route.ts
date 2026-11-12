@@ -26,7 +26,9 @@ export async function GET(request: Request) {
  * Records a counter sale that has already been paid (POS machine, UPI QR or cash):
  * puts the order in the queue and creates the GST invoice. Sending the same
  * `saleId` again returns the same sale, so a double tap never charges twice.
- * Body: { event, saleId, mode: "pos" | "upi" | "cash", lines: [{ title, qty }] }
+ * Body: { event, saleId, mode: "pos" | "upi" | "cash", lines: [{ title, qty }], training?: true }
+ * A training sale is practice: it makes a TEST invoice but no order, so it never
+ * reaches the board, the order numbers or the finance report.
  */
 export async function POST(request: Request) {
   if (!(await allowed())) return new Response("Unauthorized", { status: 401 });
@@ -46,7 +48,8 @@ export async function POST(request: Request) {
   const cart = resolveCart(event, Array.isArray(body?.lines) ? body.lines : []);
   if ("error" in cart) return new Response(cart.error, { status: 400 });
 
-  const paymentId = `ctr_${saleId}`;
+  const training = body?.training === true;
+  const paymentId = training ? `ctr_trn_${saleId}` : `ctr_${saleId}`;
   let inv = await getInvoiceByPayment(paymentId);
   if (!inv) {
     const order: Order = {
@@ -58,7 +61,7 @@ export async function POST(request: Request) {
       paymentId,
       payMode: mode,
     };
-    const orderNumber = await addOrder(event.slug, order);
+    const orderNumber = training ? 0 : await addOrder(event.slug, order);
     inv = await issueInvoice({
       eventName: event.name,
       orderNumber,
@@ -67,12 +70,14 @@ export async function POST(request: Request) {
       items: cart.items,
       customer: {},
       payMode: mode,
+      forceTest: training,
     });
   }
 
   const token = invoiceToken(paymentId);
   const base = (process.env.PUBLIC_BASE_URL ?? "").replace(/\/$/, "");
   return Response.json({
+    training: inv.orderNumber === 0,
     orderNumber: inv.orderNumber,
     invoiceNumber: inv.number,
     totalPaise: inv.totalPaise,
