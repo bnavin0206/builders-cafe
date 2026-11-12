@@ -1,6 +1,7 @@
 import { fetchSyncListItems, findSyncMapItems, getSyncService } from "@/lib/twilio";
 import { EventState } from "@/lib/utils";
 import { sendMail } from "@/lib/mail";
+import { listInvoices } from "./invoice-store";
 import { runDailyReports, type DayStatus, type ReportDeps } from "./daily-report-run";
 
 const EVENTS_MAP = process.env.NEXT_PUBLIC_EVENTS_MAP || "";
@@ -38,6 +39,7 @@ export function realReportDeps(): ReportDeps {
       const items = await fetchSyncListItems(slug);
       return items.map((i: any) => ({ index: i.index, dateCreated: i.dateCreated, data: i.data }));
     },
+    invoiceNumbers: async () => Object.fromEntries((await listInvoices()).map((i) => [i.paymentId, i.number])),
     claim: async (slug, day) => {
       const map = await reportsMap();
       const key = `${slug}:${day}`;

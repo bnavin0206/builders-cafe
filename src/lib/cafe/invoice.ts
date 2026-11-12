@@ -1,6 +1,14 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { SELLER } from "@/config/seller";
 
+export type PayMode = "razorpay" | "pos" | "upi" | "cash";
+export const PAY_MODE_LABEL: Record<PayMode, string> = {
+  razorpay: "Razorpay (WhatsApp)",
+  pos: "POS machine",
+  upi: "UPI QR",
+  cash: "Cash",
+};
+
 export interface InvoiceLine {
   name: string;
   qty: number;
@@ -19,6 +27,8 @@ export interface Invoice {
   orderNumber: number;
   paymentId: string;
   customer: { name?: string; phone?: string; email?: string };
+  /** How it was paid. Unset means online through Razorpay. */
+  payMode?: PayMode;
   lines: InvoiceLine[];
   taxablePaise: number;
   cgstPaise: number;
@@ -52,6 +62,7 @@ export function buildInvoice(input: {
   amountPaise: number;
   items: Array<{ title: string; price?: number }>;
   customer: Invoice["customer"];
+  payMode?: PayMode;
 }): Invoice {
   const grouped = new Map<string, { qty: number; unit: number }>();
   for (const i of input.items) {
@@ -86,6 +97,7 @@ export function buildInvoice(input: {
     orderNumber: input.orderNumber,
     paymentId: input.paymentId,
     customer: input.customer,
+    ...(input.payMode ? { payMode: input.payMode } : {}),
     lines,
     taxablePaise: sum("taxablePaise"),
     cgstPaise: sum("cgstPaise"),
@@ -141,7 +153,7 @@ th{background:#f3f3f3;font-size:12px}td.n,th.n{text-align:right}
 <div class=r><b>Invoice No:</b> ${esc(inv.number)}<br><b>Date:</b> ${istDateTime(inv.issuedAt)}</div></div>
 <div class=box><div><b>${esc(SELLER.name)}</b><br>${SELLER.address.map(esc).join("<br>")}<br><b>GSTIN:</b> ${SELLER.gstin}</div>
 <div><b>Billed to</b><br>${esc(c.name || "Customer")}${c.phone ? `<br>${esc(c.phone)}` : ""}${c.email ? `<br>${esc(c.email)}` : ""}<br>Place of supply: ${SELLER.stateName} (${SELLER.stateCode})</div></div>
-<div class=mut style="margin-top:10px">${esc(inv.eventName)}, order #${inv.orderNumber} &nbsp;|&nbsp; Paid online, Razorpay ID ${esc(inv.paymentId)}</div>
+<div class=mut style="margin-top:10px">${esc(inv.eventName)}, order #${inv.orderNumber} &nbsp;|&nbsp; ${inv.payMode && inv.payMode !== "razorpay" ? `Paid at the counter: ${PAY_MODE_LABEL[inv.payMode]}` : `Paid online, Razorpay ID ${esc(inv.paymentId)}`}</div>
 <div class=scroll><table><tr><th>#</th><th>Item</th><th>SAC</th><th class=n>Qty</th><th class=n>Taxable (₹)</th><th class=n>CGST ${half}%</th><th class=n>SGST ${half}%</th><th class=n>Total (₹)</th></tr>${rows}</table></div>
 <table class=tot><tr><td>Taxable value</td><td class=n>${rupees(inv.taxablePaise)}</td></tr><tr><td>CGST @ ${half}%</td><td class=n>${rupees(inv.cgstPaise)}</td></tr><tr><td>SGST @ ${half}%</td><td class=n>${rupees(inv.sgstPaise)}</td></tr><tr class=big><td>Total paid</td><td class=n>₹${rupees(inv.totalPaise)}</td></tr></table>
 <div class=mut style="margin-top:14px">Amount in words: ${amountInWords(inv.totalPaise)}. Prices include GST. This is a computer-generated invoice and needs no signature.</div>

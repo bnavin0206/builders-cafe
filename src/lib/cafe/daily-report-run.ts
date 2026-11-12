@@ -40,6 +40,8 @@ export type DayStatus = "sending" | "sent" | "empty" | "failed" | "skipped";
 export interface ReportDeps {
   listOpenEvents(): Promise<Array<{ slug: string; name: string }>>;
   fetchOrders(slug: string): Promise<Array<{ index: number; dateCreated: Date; data: unknown }>>;
+  /** GST invoice numbers by payment ID (optional). */
+  invoiceNumbers?(): Promise<Record<string, string>>;
   /** True for exactly one caller per event and day (a failed day can be claimed again later). */
   claim(slug: string, day: string): Promise<boolean>;
   mark(slug: string, day: string, status: DayStatus): Promise<void>;
@@ -53,13 +55,21 @@ const minutesIST = (d: Date) => {
 
 /** Builds and sends the report for one event and day. Returns what happened. */
 export async function sendReportFor(
-  deps: Pick<ReportDeps, "fetchOrders" | "send">,
+  deps: Pick<ReportDeps, "fetchOrders" | "send" | "invoiceNumbers">,
   event: { slug: string; name: string },
   day: string,
   cfg: ReportConfig,
   forceTest = false,
 ): Promise<{ result: MailResult | "empty" | "no-recipient"; orders: number }> {
   const orders = paidOrdersForDay(await deps.fetchOrders(event.slug), day);
+  if (orders.length > 0 && deps.invoiceNumbers) {
+    try {
+      const nums = await deps.invoiceNumbers();
+      for (const o of orders) o.invoiceNo = nums[o.paymentId];
+    } catch (e) {
+      console.error("Could not read invoice numbers for the report", (e as Error)?.message);
+    }
+  }
   if (orders.length === 0 && !cfg.sendEmpty) return { result: "empty", orders: 0 };
   const test = !cfg.live || forceTest;
   const to = test ? cfg.testTo : cfg.to;

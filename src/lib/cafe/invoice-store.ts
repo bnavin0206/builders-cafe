@@ -72,3 +72,11 @@ export async function listInvoices(): Promise<Invoice[]> {
   const items = await service.syncMaps()(MAP).syncMapItems.list({ limit: 1000 });
   return items.map((i) => i.data as Invoice).sort((a, b) => a.seq - b.seq);
 }
+
+/** Remembers the number a customer scanned the invoice QR from (if the invoice has none yet). */
+export async function attachPhone(paymentId: string, phone: string): Promise<void> {
+  const inv = await getInvoiceByPayment(paymentId);
+  if (!inv || inv.customer.phone) return;
+  const service = await ensure("map");
+  await service.syncMaps()(MAP).syncMapItems(paymentId).update({ data: { ...inv, customer: { ...inv.customer, phone } } });
+}

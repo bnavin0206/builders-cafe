@@ -80,6 +80,8 @@ export interface Order {
   // amountPaise 0 and no paymentId.
   amountPaise?: number;
   paymentId?: string;
+  // How a counter sale was paid; unset for WhatsApp orders paid through Razorpay.
+  payMode?: "pos" | "upi" | "cash";
   // True when the order includes the free coffee (counted against the daily limit).
   freeCoffee?: boolean;
 }

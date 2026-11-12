@@ -2,6 +2,10 @@
 
 "use server";
 
+import { parseInvoiceRequest } from "@/lib/cafe/counter";
+import { paymentIdFromToken } from "@/lib/cafe/invoice";
+import { attachPhone, getInvoiceByPayment } from "@/lib/cafe/invoice-store";
+import { msg } from "@/lib/cafe/messages";
 import {
   createSyncMapItemIfNotExists,
   updateOrCreateSyncMapItem,
@@ -260,6 +264,21 @@ export async function POST(request: Request) {
 
   // Use E.164 phone as the Sync key — strip channel prefixes
   const phone = sender.replace(/^(whatsapp:|rcs:|sms:)/, "");
+
+  // A customer who scanned the counter invoice QR: send their invoice link.
+  const invoiceToken = parseInvoiceRequest(incomingMessageBody);
+  if (invoiceToken) {
+    const paymentId = paymentIdFromToken(invoiceToken);
+    const inv = paymentId ? await getInvoiceByPayment(paymentId) : undefined;
+    const base = (process.env.PUBLIC_BASE_URL ?? "").replace(/\/$/, "");
+    if (inv && paymentId && base) {
+      await attachPhone(paymentId, `+${phone.replace(/\D/g, "")}`).catch(() => {});
+      await sendMessage(sender, msg.invoiceReady(inv.number, `${base}/invoice/${encodeURIComponent(invoiceToken)}`), undefined, undefined, receivedOn);
+    } else {
+      await sendMessage(sender, "Sorry, we could not find that invoice. Please ask at the counter.", undefined, undefined, receivedOn);
+    }
+    return new Response(null, { status: 200 });
+  }
 
   const { data: attendeeRecord } = await createSyncMapItemIfNotExists(
     NEXT_PUBLIC_ATTENDEES_MAP,

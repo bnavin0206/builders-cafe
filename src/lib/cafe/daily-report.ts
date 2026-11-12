@@ -9,6 +9,8 @@ export interface ReportOrder {
   paymentId: string;
   status: string;
   channel: string;
+  payMode?: string;
+  invoiceNo?: string;
 }
 
 export interface ReportSummary {
@@ -40,6 +42,7 @@ export function paidOrdersForDay(
       paymentId?: string;
       status?: string;
       channel?: string;
+      payMode?: string;
     } | null;
     if (!d || !(Number(d.amountPaise) > 0) || !d.paymentId) continue;
     if (istDay(new Date(i.dateCreated)) !== day) continue;
@@ -51,6 +54,7 @@ export function paidOrdersForDay(
       paymentId: d.paymentId,
       status: d.status ?? "",
       channel: d.channel ?? "",
+      payMode: d.payMode,
     });
   }
   return out.sort((a, b) => a.time.getTime() - b.time.getTime());
@@ -72,14 +76,15 @@ const timeIST = (d: Date) =>
 
 /** A CSV that opens in Excel (with a byte order mark so ₹ and accents show right). */
 export function reportCsv(orders: ReportOrder[], day: string): string {
-  const header = ["Date", "Time (IST)", "Order no", "Items", "Amount (INR)", "Payment mode", "Payment ID", "Status"];
+  const header = ["Date", "Time (IST)", "Order no", "Invoice no", "Items", "Amount (INR)", "Payment mode", "Payment ID", "Status"];
   const rows = orders.map((o) => [
     day,
     timeIST(o.time),
     o.no,
+    o.invoiceNo ?? "",
     o.items,
     rupees(o.amountPaise),
-    o.channel === "whatsapp" ? "Razorpay (WhatsApp)" : "Razorpay",
+    o.payMode ? ({ pos: "Counter: POS machine", upi: "Counter: UPI QR", cash: "Counter: Cash" } as Record<string, string>)[o.payMode] ?? o.payMode : o.channel === "whatsapp" ? "Razorpay (WhatsApp)" : "Razorpay",
     o.paymentId,
     o.status,
   ]);
@@ -123,10 +128,10 @@ export function buildReportEmail(args: {
       ? [`Cancelled after payment: ${s.cancelledCount} (${inr(s.cancelledPaise)}), shown in the CSV with status "cancelled". Check whether they were refunded.`]
       : []),
     "",
-    "The attached CSV lists every paid order with its time, items, amount and Razorpay payment ID.",
+    "The attached CSV lists every paid order with its time, GST invoice number, items, amount and payment ID.",
     "It has no customer names, phone numbers or emails.",
     "",
-    "This report lists paid orders. GST invoice numbers will be added once invoicing is switched on.",
+    "Counter sales are included, with the way they were paid (POS machine, UPI QR or cash) in the Payment mode column.",
   ];
   return {
     subject,
