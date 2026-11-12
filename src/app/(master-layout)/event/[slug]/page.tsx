@@ -30,6 +30,7 @@ import { validateSelection } from "@/lib/cafe/menu-validation";
 import QrCodePopoverContent from "./qr-code-popovercontent";
 import { Popover, PopoverTrigger } from "@/components/ui/popover";
 import { modes, EventState } from "@/types";
+import SendReportCard from "./send-report-card";
 import { Textarea } from "@/components/ui/text-area";
 import {
   Select,
@@ -850,6 +851,8 @@ function EventPage({ params }: { params: Promise<{ slug: string }> }) {
           )}
         </Card>
       )}
+
+      {!isNewEvent && <SendReportCard slug={slug} />}
 
       {/* Create button */}
       {isNewEvent && (
