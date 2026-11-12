@@ -1269,7 +1269,7 @@ describe("the real menu", () => {
     };
     return e;
   };
-  const GROUPS = ["Drinks", "Sandwich", "Savoury", "Pastry"];
+  const GROUPS = ["Coffee", "Tea & More", "Sandwich", "Savoury", "Pastry"];
 
   test("a winner picks from four free drinks", async () => {
     const s = new Sim(realEvent());
@@ -1285,20 +1285,20 @@ describe("the real menu", () => {
     await s.failQuiz();
     const { rows, prompt } = s.lastList!;
     expect(rows.map((r) => r.title)).toEqual([
+      "Cappuccino",
+      "Americano",
+      "Espresso",
       "Cafe Mocha",
       "Cafe Latte",
-      "Hot Chocolate",
-      "Elachi Chai",
-      "Water Bottle",
+      "Tea & More ▸",
       "Sandwich ▸",
       "Savoury ▸",
       "Pastry ▸",
     ]);
-    expect(rows[0]).toMatchObject({ id: "1", description: "₹100 · Drinks" });
-    expect(rows[4]).toMatchObject({ id: "5", description: "₹20 · Drinks" });
-    expect(rows[5]).toMatchObject({ id: "page:1", description: "Show the Sandwich items" });
+    expect(rows[0]).toMatchObject({ id: "1", description: "₹100 · Coffee" });
+    expect(rows[5]).toMatchObject({ id: "page:1", description: "Show the Tea & More items" });
     expect(rows.some((r) => r.id === "0")).toBe(false); // nothing picked yet
-    expect(prompt).toContain("Showing: Drinks");
+    expect(prompt).toContain("Showing: Coffee");
     expect(rows.every((r) => r.title.length <= 24 && r.description.length <= 72)).toBe(true);
   });
 
@@ -1306,7 +1306,7 @@ describe("the real menu", () => {
     const s = new Sim(realEvent());
     s.enableLists();
     await s.failQuiz();
-    await s.say("page:1");
+    await s.say("page:2");
     expect(s.record.cartItems ?? []).toEqual([]);
     expect(s.record.cartGroup).toBe("Sandwich");
     expect(s.lastList!.rows.map((r) => r.title)).toEqual([
@@ -1316,7 +1316,8 @@ describe("the real menu", () => {
       "Chicken Sandwich 1",
       "Chicken Sandwich 2",
       "Chicken Sandwich 3",
-      "Drinks ▸",
+      "Coffee ▸",
+      "Tea & More ▸",
       "Savoury ▸",
       "Pastry ▸",
     ]);
@@ -1328,23 +1329,23 @@ describe("the real menu", () => {
     const s = new Sim(realEvent());
     s.enableLists();
     await s.failQuiz();
-    await s.say("page:1");
-    await s.say("6"); // Mint Sandwich: stays on the Sandwich page
+    await s.say("page:2");
+    await s.say("10"); // Mint Sandwich: stays on the Sandwich page
     expect(s.record.cartItems).toEqual(["Mint Sandwich"]);
     expect(s.record.cartGroup).toBe("Sandwich");
     expect(s.lastList!.prompt).toContain("So far: Mint Sandwich");
     expect(s.lastList!.prompt).toContain("Showing: Sandwich");
     expect(s.lastList!.rows.at(-1)).toMatchObject({ id: "0", title: "Done" });
-    expect(s.lastList!.rows[6]).toMatchObject({ id: "page:0", title: "Drinks ▸" });
+    expect(s.lastList!.rows[6]).toMatchObject({ id: "page:3", title: "Savoury ▸" });
     expect(s.lastList!.rows).toHaveLength(10);
 
-    await s.say("page:0"); // back to Drinks, the cart is kept
+    await s.say("page:0"); // back to Coffee, the cart is kept
     expect(s.lastList!.prompt).toContain("So far: Mint Sandwich");
     expect(s.lastList!.rows.at(-1)).toMatchObject({ id: "0", title: "Done" });
-    await s.say("1"); // Cafe Mocha
-    expect(s.record.cartItems).toEqual(["Mint Sandwich", "Cafe Mocha"]);
-    await s.say("1"); // another Cafe Mocha
-    expect(s.lastList!.prompt).toContain("So far: Mint Sandwich, Cafe Mocha ×2");
+    await s.say("1"); // Cappuccino
+    expect(s.record.cartItems).toEqual(["Mint Sandwich", "Cappuccino"]);
+    await s.say("1"); // another Cappuccino
+    expect(s.lastList!.prompt).toContain("So far: Mint Sandwich, Cappuccino ×2");
 
     await s.say("0"); // Done
     expect(s.record.stage).toBe(Stages.PICK_ADDONS);
@@ -1370,8 +1371,8 @@ describe("the real menu", () => {
     expect(s.record.cartGroup).toBe("Savoury");
     await s.say("Veg Puff"); // an item by title
     expect(s.record.cartItems).toEqual(["Veg Puff"]);
-    await s.say("Drinks ▸");
-    expect(s.record.cartGroup).toBe("Drinks");
+    await s.say("Coffee ▸");
+    expect(s.record.cartGroup).toBe("Coffee");
     await s.say("Cafe Latte");
     await s.say("Done");
     expect(s.record.stage).toBe(Stages.PICK_ADDONS);
@@ -1381,7 +1382,7 @@ describe("the real menu", () => {
     const s = new Sim(realEvent());
     s.enableLists();
     await s.failQuiz();
-    await s.say("1, 9"); // Cafe Mocha and Chicken Sandwich 1 in one reply
+    await s.say("1, 13"); // Cappuccino and Chicken Sandwich 1 in one reply
     expect(s.record.stage).toBe(Stages.PICK_ADDONS);
     await s.say("0");
     expect(s.links[0]!.amountPaise).toBe(20000);
@@ -1401,9 +1402,9 @@ describe("the real menu", () => {
     await s.say("1"); // free Cappuccino
     await s.say("0"); // no add-ons
     expect(s.lastList!.rows.at(-1)).toMatchObject({ id: "0", title: "No thanks" });
-    expect(s.lastList!.rows.at(-2)).toMatchObject({ id: "page:3", title: "Pastry ▸" });
-    expect(s.lastList!.prompt).toContain("Showing: Drinks");
-    await s.say("page:1");
+    expect(s.lastList!.rows.at(-2)).toMatchObject({ id: "page:4", title: "Pastry ▸" });
+    expect(s.lastList!.prompt).toContain("Showing: Coffee");
+    await s.say("page:2");
     expect(s.lastList!.rows.map((r) => r.title)).toEqual([
       "Mint Sandwich",
       "Cheese Sandwich",
@@ -1411,9 +1412,9 @@ describe("the real menu", () => {
       "Chicken Sandwich 1",
       "Chicken Sandwich 2",
       "Chicken Sandwich 3",
-      "Drinks ▸",
       "Savoury ▸",
       "Pastry ▸",
+      "Coffee ▸",
       "No thanks",
     ]);
   });
@@ -1424,8 +1425,8 @@ describe("the real menu", () => {
     await s.passQuiz();
     await s.say("1");
     await s.say("0");
-    await s.say("page:1");
-    await s.say("6"); // Mint Sandwich
+    await s.say("page:2");
+    await s.say("10"); // Mint Sandwich
     expect(s.record.cartItems).toEqual(["Mint Sandwich"]);
     expect(s.lastList!.rows.at(-1)).toMatchObject({ id: "0", title: "Done" });
     await s.say("0");
@@ -1438,13 +1439,13 @@ describe("the real menu", () => {
       const s = new Sim(realEvent());
       s.enableLists();
       await s.failQuiz();
-      if (first === "with cart") await s.say("1"); // Cafe Mocha: the list gains a Done row
-      const seen = new Set<string>([s.record.cartGroup ?? "Drinks"]);
+      if (first === "with cart") await s.say("1"); // Cappuccino: the list gains a Done row
+      const seen = new Set<string>([s.record.cartGroup ?? "Coffee"]);
       for (let tap = 0; tap < 8; tap++) {
         const rows = s.lastList!.rows;
         expect(rows.length).toBeLessThanOrEqual(10);
         // Tap the row for the group that comes next in the rotation.
-        const cur = GROUPS.indexOf(s.record.cartGroup ?? "Drinks");
+        const cur = GROUPS.indexOf(s.record.cartGroup ?? "Coffee");
         const dist = (r: { id: string }) => (Number(r.id.slice(5)) - cur + GROUPS.length) % GROUPS.length;
         const next = rows
           .filter((r) => r.id.startsWith("page:"))
@@ -1479,7 +1480,7 @@ describe("the real menu", () => {
   test("a bottle of water is Rs 20 and gets no add-ons", async () => {
     const s = new Sim(realEvent());
     await s.failQuiz();
-    await s.say("5"); // Water Bottle
+    await s.say("9"); // Water Bottle
     expect(s.record.stage).toBe(Stages.AWAITING_PAYMENT);
     expect(s.links[0]!.amountPaise).toBe(2000);
     expect(s.links[0]!.description).toBe("Water Bottle");
@@ -1511,9 +1512,9 @@ describe("the real menu", () => {
   test("text mode has no pages: the whole menu is numbered", async () => {
     const s = new Sim(realEvent());
     await s.failQuiz();
-    expect(s.last).toContain("1. Cafe Mocha (₹100)");
-    expect(s.last).toContain("5. Water Bottle (₹20)");
-    expect(s.last).toContain("20. Apple Pie (₹100)");
+    expect(s.last).toContain("4. Cafe Mocha (₹100)");
+    expect(s.last).toContain("9. Water Bottle (₹20)");
+    expect(s.last).toContain("24. Apple Pie (₹100)");
     await s.say("sandwich"); // not a page in text mode
     expect(s.last).toContain("not on the menu");
   });
@@ -1557,7 +1558,7 @@ describe("the real menu", () => {
   test("drinks and food add up", async () => {
     const s = new Sim(realEvent());
     await s.failQuiz();
-    await s.say("1, 9, 9"); // Cafe Mocha, Chicken Sandwich 1 x2
+    await s.say("4, 13, 13"); // Cafe Mocha, Chicken Sandwich 1 x2
     await s.say("0");
     expect(s.links[0]!.amountPaise).toBe(30000); // 100 + 100 + 100
   });

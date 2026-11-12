@@ -33,6 +33,10 @@ const NAMES: Record<string, { name: string; short: string }> = {
   pastry: { name: "Pastries", short: "Pastries" },
 };
 
+// The WhatsApp list splits the drinks into two pages (it holds only 10 rows),
+// but the boards show them as one "Drinks" group.
+const BOARD_GROUP: Record<string, string> = { coffee: "Drinks", "tea & more": "Drinks" };
+
 const clean = (t: string | undefined) => (t ?? "").replace(/\s+/g, " ").trim();
 
 /** The items to show: switched-off items are left out, the rest keep their order. */
@@ -42,7 +46,7 @@ export function menuForBoard(items: MenuItem[]): BoardMenuItem[] {
     .map((i) => ({
       title: clean(i.title),
       price: Number.isFinite(i.price) ? Math.max(0, Math.floor(i.price as number)) : 0,
-      group: clean(i.description),
+      group: BOARD_GROUP[clean(i.description).toLowerCase()] ?? clean(i.description),
       veg: i.veg !== false,
     }))
     .filter((i) => i.title !== "");

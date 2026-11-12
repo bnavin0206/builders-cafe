@@ -109,10 +109,10 @@ describe("layout", () => {
 });
 
 describe("fit", () => {
-  test("the 24-item menu fits at close to full size on a wide and on an upright screen", () => {
+  test("the 28-item menu still fits at over 70% size on a wide and on an upright screen", () => {
     const l = layoutMenu(menuForBoard(menus.barista.items));
-    expect(fitScale(l, "landscape")).toBeGreaterThanOrEqual(0.9);
-    expect(fitScale(l, "portrait")).toBeGreaterThanOrEqual(0.9);
+    expect(fitScale(l, "landscape")).toBeGreaterThanOrEqual(0.7);
+    expect(fitScale(l, "portrait")).toBeGreaterThanOrEqual(0.7);
   });
 
   test("a long menu is shrunk, but never below 50%", () => {
@@ -125,10 +125,10 @@ describe("fit", () => {
 });
 
 describe("fit on the menu and orders page", () => {
-  test("the 23-item menu fits at close to full size on both screens", () => {
+  test("the 27-item menu still fits at over 70% size on both screens", () => {
     const l = layoutMenu(menuForBoard(menus.barista.items));
-    expect(fitDisplayScale(l, "landscape")).toBeGreaterThanOrEqual(0.9);
-    expect(fitDisplayScale(l, "portrait")).toBeGreaterThanOrEqual(0.9);
+    expect(fitDisplayScale(l, "landscape")).toBeGreaterThanOrEqual(0.7);
+    expect(fitDisplayScale(l, "portrait")).toBeGreaterThanOrEqual(0.7);
   });
 
   test("a longer menu shrinks, and never below half size", () => {

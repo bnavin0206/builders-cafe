@@ -25,17 +25,26 @@ describe("Builder's Cafe menu", () => {
     expect(free.map((i) => i.title)).toEqual(["Cappuccino", "Americano", "Masala Chai", "Espresso"]);
   });
 
-  test("the paid menu: four drinks at Rs 100, a bottle of water at Rs 20, 15 food items at Rs 100", () => {
+  test("the paid menu: eight drinks at Rs 100 (the four free ones too), a bottle of water at Rs 20, 15 food items at Rs 100", () => {
     const drinks = paid.filter((i) => i.category !== "savoury");
     const water = paid.find((i) => i.title === "Water Bottle");
     const food = paid.filter((i) => i.category === "savoury" && i.title !== "Water Bottle");
-    expect(drinks.map((i) => i.title)).toEqual(["Cafe Mocha", "Cafe Latte", "Hot Chocolate", "Elachi Chai"]);
+    expect(drinks.map((i) => i.title)).toEqual([
+      "Cappuccino",
+      "Americano",
+      "Espresso",
+      "Cafe Mocha",
+      "Cafe Latte",
+      "Masala Chai",
+      "Elachi Chai",
+      "Hot Chocolate",
+    ]);
     for (const i of drinks) {
       expect(i.price).toBe(100);
-      expect(i.description).toBe("Drinks");
+      expect(["Coffee", "Tea & More"]).toContain(i.description);
     }
-    // Water is in the Drinks section but is not a drink to add sugar to: no add-ons.
-    expect(water).toMatchObject({ price: 20, description: "Drinks", category: "savoury" });
+    // Water is in the Tea & More section but is not a drink to add sugar to: no add-ons.
+    expect(water).toMatchObject({ price: 20, description: "Tea & More", category: "savoury" });
     expect(food).toHaveLength(15);
     for (const i of food) {
       expect(i.price).toBe(100);
@@ -46,7 +55,7 @@ describe("Builder's Cafe menu", () => {
   });
 
   test("in every section the veg items come first, then the non-veg ones", () => {
-    for (const group of ["Drinks", "Sandwich", "Savoury", "Pastry"]) {
+    for (const group of ["Coffee", "Tea & More", "Sandwich", "Savoury", "Pastry"]) {
       const flags = paid.filter((i) => i.description === group).map((i) => i.veg !== false);
       expect(flags.length).toBeGreaterThan(0);
       const firstNonVeg = flags.indexOf(false);
