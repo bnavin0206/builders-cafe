@@ -10,6 +10,14 @@ export async function register() {
     const { updateConfig } = await import("@/scripts/updateConfig");
     await import("@/scripts/createTwilioRes"); // this automatically runs const createTwilioRes()
 
+    // The daily paid-orders email to finance. Does nothing unless DAILY_REPORT_ENABLED=true.
+    try {
+      const { startDailyReportTimer } = await import("@/lib/cafe/daily-report-job");
+      startDailyReportTimer();
+    } catch (e: any) {
+      console.error("Could not start the daily report", e?.message);
+    }
+
     await checkIfAllEnvVarsAreSet();
 
     //Check Twilio Resources

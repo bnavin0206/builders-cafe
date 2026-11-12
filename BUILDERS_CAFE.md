@@ -260,3 +260,11 @@ Open items that must be settled and checked before go-live:
 - [ ] Confirm the menu, prices and the add-on list (the add-ons are still placeholders).
 - [ ] Switch Razorpay and the WhatsApp sender from test to live.
 - [ ] Rotate every key and password that was used during testing.
+
+## Daily paid-orders email
+
+Off unless `DAILY_REPORT_ENABLED=true`. Each night after `REPORT_SEND_TIME` (IST, default 23:30) it emails a CSV of that day's paid orders (no customer details) per open event. Yesterday is also checked, so a restart does not lose a day. Each event and day is sent once (marker in the `DailyReports` Sync map; a failed send is retried after 30 minutes).
+
+- While Razorpay uses test keys (`RAZORPAY_KEY_ID` not `rzp_live_`), it goes only to `REPORT_TEST_TO` with a `[TEST]` subject. Finance (`REPORT_TO`, copy `REPORT_CC`) is used only with live keys.
+- Sending: set `MAIL_FROM` plus either `SENDGRID_API_KEY`, or `SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASSWORD`.
+- Try it as admin: `POST /api/reports/daily?day=YYYY-MM-DD&send=test` (test address only; `send=live` is refused in test mode).
