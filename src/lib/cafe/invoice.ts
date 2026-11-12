@@ -27,6 +27,8 @@ export interface Invoice {
   orderNumber: number;
   paymentId: string;
   customer: { name?: string; phone?: string; email?: string };
+  /** How many times it was sent to a typed number (at most three). */
+  sends?: number;
   /** True for a test sale (number starts TEST/). */
   test?: boolean;
   /** How it was paid. Unset means online through Razorpay. */

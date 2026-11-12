@@ -78,6 +78,7 @@ export async function POST(request: Request) {
   const base = (process.env.PUBLIC_BASE_URL ?? "").replace(/\/$/, "");
   return Response.json({
     training: inv.orderNumber === 0,
+    paymentId,
     orderNumber: inv.orderNumber,
     invoiceNumber: inv.number,
     totalPaise: inv.totalPaise,

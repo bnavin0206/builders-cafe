@@ -85,3 +85,10 @@ export async function attachPhone(paymentId: string, phone: string): Promise<voi
   const service = await ensure("map");
   await service.syncMaps()(MAP).syncMapItems(paymentId).update({ data: { ...inv, customer: { ...inv.customer, phone } } });
 }
+
+export async function markSent(paymentId: string): Promise<void> {
+  const inv = await getInvoiceByPayment(paymentId);
+  if (!inv) return;
+  const service = await ensure("map");
+  await service.syncMaps()(MAP).syncMapItems(paymentId).update({ data: { ...inv, sends: (inv.sends ?? 0) + 1 } });
+}

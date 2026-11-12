@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type Item = { title: string; price: number; veg: boolean };
 type Mode = "pos" | "upi" | "cash";
-type Done = { training?: boolean; orderNumber: number; invoiceNumber: string; totalPaise: number; invoiceUrl: string | null; qr: string | null };
+type Done = { paymentId?: string; training?: boolean; orderNumber: number; invoiceNumber: string; totalPaise: number; invoiceUrl: string | null; qr: string | null };
 
 const MODES: Array<[Mode, string]> = [
   ["pos", "POS machine"],
@@ -29,6 +29,10 @@ function CounterPage({ params }: { params: Promise<{ slug: string }> }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState<Done | null>(null);
+  const [phone, setPhone] = useState("");
+  const [consent, setConsent] = useState(false);
+  const [sendState, setSendState] = useState("");
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     fetch(`/api/counter?event=${encodeURIComponent(slug)}`)
@@ -73,7 +77,43 @@ function CounterPage({ params }: { params: Promise<{ slug: string }> }) {
     }
   };
 
+  const sendInvoice = async () => {
+    if (!done?.paymentId) return;
+    setSending(true);
+    setSendState("Sending…");
+    try {
+      const res = await fetch("/api/counter/invoice", {
+        method: "POST",
+        body: JSON.stringify({ event: slug, paymentId: done.paymentId, phone, consent }),
+      });
+      const d = await res.json().catch(() => null);
+      if (!res.ok) {
+        setSendState(
+          d?.reason === "no-template"
+            ? "WhatsApp needs the invoice template, which is not approved yet. Use the QR instead."
+            : d?.reason === "failed"
+              ? "WhatsApp could not send it. Check the number, or use the QR."
+              : (await Promise.resolve(d ? JSON.stringify(d) : res.statusText)) || "Could not send",
+        );
+        return;
+      }
+      setSendState("Sent. Checking delivery…");
+      for (let i = 0; i < 6; i++) {
+        await new Promise((r) => setTimeout(r, 2500));
+        const st = await fetch(`/api/counter/invoice?sid=${d.sid}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+        if (st?.status === "delivered" || st?.status === "read") return setSendState("Delivered to WhatsApp ✓");
+        if (st?.status === "failed" || st?.status === "undelivered") return setSendState(`Not delivered (code ${st.errorCode ?? "?"}). Check the number, or use the QR.`);
+      }
+      setSendState("Sent. Delivery not confirmed yet.");
+    } finally {
+      setSending(false);
+    }
+  };
+
   const reset = () => {
+    setPhone("");
+    setConsent(false);
+    setSendState("");
     setCart({});
     setMode(null);
     setDone(null);
@@ -101,6 +141,28 @@ function CounterPage({ params }: { params: Promise<{ slug: string }> }) {
             ) : (
               <p className="text-sm text-red-600">No WhatsApp number is set for this event, so there is no QR. Use Print below.</p>
             )}
+            <div className="space-y-2 rounded border p-3 text-left">
+              <label className="block text-sm font-medium" htmlFor="invphone">
+                Or send to a WhatsApp number (optional)
+              </label>
+              <input
+                id="invphone"
+                type="tel"
+                inputMode="tel"
+                placeholder="98765 43210"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full rounded-md border px-3 py-2"
+              />
+              <label className="flex items-start gap-2 text-sm">
+                <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1" />
+                Customer agrees to get the invoice on WhatsApp
+              </label>
+              <Button className="w-full" disabled={sending || !consent || phone.trim().length < 8 || !done.paymentId} onClick={sendInvoice}>
+                Send invoice on WhatsApp
+              </Button>
+              {sendState && <p className="text-sm">{sendState}</p>}
+            </div>
             {done.invoiceUrl && (
               <Button variant="outline" onClick={() => window.open(done.invoiceUrl!, "_blank")}>
                 Open / print invoice
