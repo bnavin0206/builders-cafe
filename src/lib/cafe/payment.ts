@@ -7,6 +7,15 @@ export interface PaymentIo {
   getEvent(slug: string): Promise<Event | null | undefined>;
   /** Dependencies bound to the attendee's WhatsApp sender. */
   makeDeps(event: Event, sender: string, from: string): CafeDeps;
+  /** Creates the GST invoice and returns its link (when invoices are set up). */
+  issueInvoice?(args: {
+    eventName: string;
+    orderNumber: number;
+    paymentId: string;
+    amountPaise: number;
+    items: Array<{ title: string; price?: number }>;
+    customer: { name?: string; phone?: string; email?: string };
+  }): Promise<{ number: string; link?: string }>;
 }
 
 export interface PaidPayload {
@@ -82,5 +91,21 @@ export async function confirmPayment(
     paymentId: paid.paymentId,
   });
   deps.send(msg.paymentReceived(n, orderSummary(coffee, pending.addOns, paidItems)));
+  // The invoice must never get in the way of the order: if it fails, we log it and carry on.
+  if (io.issueInvoice) {
+    try {
+      const inv = await io.issueInvoice({
+        eventName: event.name,
+        orderNumber: n,
+        paymentId: paid.paymentId,
+        amountPaise: paid.amountPaise,
+        items: paidItems,
+        customer: { name: record.fullName, phone: `+${paid.phone.replace(/\D/g, "")}`, email: record.email },
+      });
+      deps.send(msg.invoiceReady(inv.number, inv.link));
+    } catch (e) {
+      console.error("Invoice failed", paid.paymentId, (e as Error)?.message);
+    }
+  }
   return "placed";
 }

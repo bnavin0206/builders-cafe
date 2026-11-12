@@ -268,3 +268,7 @@ Off unless `DAILY_REPORT_ENABLED=true`. Each night after `REPORT_SEND_TIME` (IST
 - While Razorpay uses test keys (`RAZORPAY_KEY_ID` not `rzp_live_`), it goes only to `REPORT_TEST_TO` with a `[TEST]` subject. Finance (`REPORT_TO`, copy `REPORT_CC`) is used only with live keys.
 - Sending: set `MAIL_FROM` plus either `SENDGRID_API_KEY`, or `SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASSWORD`.
 - Try it as admin: `POST /api/reports/daily?day=YYYY-MM-DD&send=test` (test address only; `send=live` is refused in test mode).
+
+## GST invoices
+
+After a Razorpay payment is confirmed, an invoice is created once per payment: number `MMC/TBC/00001` (a counter in the `InvoiceCounter` Sync document), stored in the `Invoices` Sync map, and the customer gets a WhatsApp message with a signed link `/invoice/<paymentId>.<signature>` (a printable page; "Save as PDF" from the browser). Seller details and the 5% GST (prices include GST, split into CGST and SGST) are in `src/config/seller.ts`. The link is signed with `INVOICE_LINK_SECRET` (falls back to `RAZORPAY_WEBHOOK_SECRET`). A failure to create the invoice is logged and never blocks the order.
