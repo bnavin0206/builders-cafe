@@ -4,16 +4,23 @@ import { getSyncService } from "@/lib/twilio";
  * The next number of a named counter: 1, 2, 3, ... with nothing skipped.
  * The counter lives in a Twilio Sync document and is updated only if nobody
  * else changed it in between, so two orders at the same moment get different
- * numbers.
+ * numbers. `initial` gives the starting value the first time the counter is
+ * created, so a counter added while orders already exist continues after them.
  */
-export async function nextInSequence(name: string): Promise<number> {
+export async function nextInSequence(name: string, initial?: () => Promise<number>): Promise<number> {
   const service = await getSyncService();
   try {
     await service.documents()(name).fetch();
   } catch (e: any) {
     if (e?.status !== 404) throw e;
     try {
-      await service.documents().create({ uniqueName: name, data: { last: 0 } });
+      let start = 0;
+      try {
+        start = Math.max(0, Math.floor((await initial?.()) ?? 0));
+      } catch (i) {
+        console.error("Could not read the starting number", (i as Error)?.message);
+      }
+      await service.documents().create({ uniqueName: name, data: { last: start } });
     } catch (c: any) {
       if (c?.status !== 409) throw c;
     }

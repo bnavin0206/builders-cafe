@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 
-import { pushToSyncList } from "@/lib/twilio";
+import { getSyncService, pushToSyncList } from "@/lib/twilio";
 import { getAuthenticatedRole, Privilege } from "@/proxy";
 import { getEvent } from "@/app/webhooks/mixologist-helper";
 import { EventState } from "@/lib/utils";
@@ -46,7 +46,10 @@ export async function POST(request: Request) {
   try {
     let orderNumber: number | undefined;
     try {
-      orderNumber = await nextInSequence(`OrderCounter-${data.event}`);
+      orderNumber = await nextInSequence(`OrderCounter-${data.event}`, async () => {
+        const last = await (await getSyncService()).syncLists()(data.event).syncListItems.list({ limit: 1, order: "desc" });
+        return last.length > 0 ? last[0].index + 3 : 0;
+      });
     } catch (e) {
       console.error("Order counter failed, using the list position", (e as Error)?.message);
     }

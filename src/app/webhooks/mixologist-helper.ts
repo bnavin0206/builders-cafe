@@ -2,6 +2,7 @@ import type { Event, Order } from "@/types";
 
 import { nextInSequence } from "@/lib/cafe/sequence";
 import {
+  getSyncService,
   fetchSyncListItem,
   findSyncMapItems,
   pushToSyncList,
@@ -46,6 +47,17 @@ export async function cancelOrder(event: Event, index: number, data: Order) {
 }
 
 /**
+ * Where the numbers continue from when the counter is first created: just past
+ * the highest list position in use (older orders were numbered by position), with
+ * a small margin so an order placed by a server still on the old version cannot clash.
+ */
+async function highestOrderIndex(event: string): Promise<number> {
+  const service = await getSyncService();
+  const last = await service.syncLists()(event).syncListItems.list({ limit: 1, order: "desc" });
+  return last.length > 0 ? last[0].index + 3 : 0;
+}
+
+/**
  * Adds an order and returns its number: 1, 2, 3, ... in the order they come in.
  * (The position in the Sync list is not used, because Twilio counts every
  * change to the list, so it jumps.) If the counter is unavailable, the list
@@ -54,7 +66,7 @@ export async function cancelOrder(event: Event, index: number, data: Order) {
 export async function addOrder(event: string, order: Order) {
   let orderNumber: number | undefined;
   try {
-    orderNumber = await nextInSequence(`OrderCounter-${event}`);
+    orderNumber = await nextInSequence(`OrderCounter-${event}`, () => highestOrderIndex(event));
   } catch (e) {
     console.error("Order counter failed, using the list position", (e as Error)?.message);
   }
