@@ -97,7 +97,7 @@ function CounterPage({ params }: { params: Promise<{ slug: string }> }) {
         );
         return;
       }
-      setSendState("Sent. Checking delivery…");
+      setSendState(d.via === "template" ? "Sent with the invoice template. Checking delivery…" : "Sent as a normal message. Checking delivery…");
       for (let i = 0; i < 6; i++) {
         await new Promise((r) => setTimeout(r, 2500));
         const st = await fetch(`/api/counter/invoice?sid=${d.sid}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
