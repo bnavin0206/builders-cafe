@@ -14,10 +14,10 @@ const seeded = (seed: number) => () => {
 };
 
 describe("quiz bank", () => {
-  test("has 30 questions with 3 or 4 options and a valid correct index", () => {
-    expect(quizBank).toHaveLength(30);
+  test("has 19 questions with 3 or 4 options and a valid correct index", () => {
+    expect(quizBank).toHaveLength(19);
     const ids = new Set(quizBank.map((q) => q.id));
-    expect(ids.size).toBe(30);
+    expect(ids.size).toBe(19);
     for (const q of quizBank) {
       expect([3, 4]).toContain(q.options.length);
       expect(Number.isInteger(q.correct)).toBe(true);

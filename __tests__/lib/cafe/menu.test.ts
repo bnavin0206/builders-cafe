@@ -25,7 +25,7 @@ describe("Builder's Cafe menu", () => {
     expect(free.map((i) => i.title)).toEqual(["Cappuccino", "Americano", "Masala Chai", "Espresso"]);
   });
 
-  test("the paid menu: eight drinks at Rs 100 (the four free ones too), a bottle of water at Rs 20, 15 food items at Rs 100", () => {
+  test("the paid menu: eight drinks at Rs 100 (the four free ones too), a bottle of water at Rs 20, 13 food items at Rs 100", () => {
     const drinks = paid.filter((i) => i.category !== "savoury");
     const water = paid.find((i) => i.title === "Water Bottle");
     const food = paid.filter((i) => i.category === "savoury" && i.title !== "Water Bottle");
@@ -45,7 +45,7 @@ describe("Builder's Cafe menu", () => {
     }
     // Water is in the Tea & More section but is not a drink to add sugar to: no add-ons.
     expect(water).toMatchObject({ price: 20, description: "Tea & More", category: "savoury" });
-    expect(food).toHaveLength(15);
+    expect(food).toHaveLength(13);
     for (const i of food) {
       expect(i.price).toBe(100);
       expect(["Sandwich", "Savoury", "Pastry"]).toContain(i.description);

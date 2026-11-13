@@ -35,9 +35,7 @@ describe("menu for the board", () => {
     expect(board.filter((i) => !i.veg).map((i) => i.title).sort()).toEqual([
       "Chicken Cutlet",
       "Chicken Puff",
-      "Chicken Sandwich 1",
-      "Chicken Sandwich 2",
-      "Chicken Sandwich 3",
+      "Chicken Sandwich",
       "Egg Puff",
     ]);
   });
