@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { orderTag, type TagColor } from "@/lib/cafe/order-tag";
+
 import { Privilege } from "@/proxy";
 import { getCookie } from "cookies-next";
 import { sendMessage, getPinnedSender } from "@/lib/twilio";
@@ -16,6 +18,14 @@ import { Check, UserCheck } from "lucide-react";
 import {
   getOrderReadyMessage,
 } from "@/scripts/fetchContentTemplates";
+
+const TAG_STYLE: Record<TagColor, string> = {
+  green: "bg-green-100 text-green-800",
+  blue: "bg-blue-100 text-blue-800",
+  purple: "bg-purple-100 text-purple-800",
+  orange: "bg-orange-100 text-orange-800",
+  gray: "bg-gray-200 text-gray-700",
+};
 
 export default function OrdersList({
   ordersList,
@@ -156,12 +166,22 @@ export default function OrdersList({
         >
           {/* Order number */}
           <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-twilio-ink flex items-center justify-center">
-            <span className="text-white font-bold text-sm">#{index}</span>
+            <span className="text-white font-bold text-sm">#{data.orderNumber ?? index}</span>
           </div>
 
           {/* Order details */}
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-twilio-ink text-base leading-snug">
+              {(() => {
+                const tag = orderTag(data);
+                return (
+                  <span
+                    className={`mr-2 inline-block rounded px-1.5 py-0.5 align-middle text-[11px] font-bold tracking-wide ${TAG_STYLE[tag.color]}`}
+                  >
+                    {tag.text}
+                  </span>
+                );
+              })()}
               {data.item}
               {data?.modifiers && (
                 <span className="text-gray-500 font-normal"> · {data.modifiers}</span>

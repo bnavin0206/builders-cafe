@@ -60,7 +60,7 @@ export function buildBoard(
     const updated = new Date(order.dateUpdated);
     const valid = !Number.isNaN(updated.getTime());
     const entry: BoardOrder = {
-      no: order.index,
+      no: Number.isInteger(data.orderNumber) && (data.orderNumber as number) > 0 ? (data.orderNumber as number) : order.index,
       items,
       updatedAt: (valid ? updated : now).toISOString(),
     };

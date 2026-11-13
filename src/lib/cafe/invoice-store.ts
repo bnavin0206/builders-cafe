@@ -1,6 +1,7 @@
 import { getSyncService } from "@/lib/twilio";
 import type { Invoice } from "./invoice";
 import { buildInvoice, isTestMode } from "./invoice";
+import { nextInSequence } from "./sequence";
 
 const COUNTER = "InvoiceCounter";
 const TEST_COUNTER = "InvoiceCounterTest";
@@ -26,20 +27,7 @@ async function ensure(kind: "doc" | "map", name = COUNTER) {
 
 /** Next invoice number. Safe when two payments arrive together. */
 async function nextSeq(test: boolean): Promise<number> {
-  const name = counterName(test);
-  const service = await ensure("doc", name);
-  for (let attempt = 0; attempt < 10; attempt++) {
-    const doc = await service.documents()(name).fetch();
-    const next = Number((doc.data as { last?: number }).last ?? 0) + 1;
-    try {
-      // @ts-ignore ifMatch is supported by the API but missing from the typings
-      await service.documents()(name).update({ data: { last: next }, ifMatch: doc.revision });
-      return next;
-    } catch (e: any) {
-      if (e?.status !== 412) throw e;
-    }
-  }
-  throw new Error("Could not allocate an invoice number");
+  return nextInSequence(counterName(test));
 }
 
 export async function getInvoiceByPayment(paymentId: string): Promise<Invoice | undefined> {

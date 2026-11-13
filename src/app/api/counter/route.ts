@@ -54,6 +54,7 @@ export async function POST(request: Request) {
   if (!inv) {
     const order: Order = {
       key: "counter",
+      manual: true,
       item: summarizeItems(cart.items.map((i) => i.title)),
       status: "queued",
       channel: "other",

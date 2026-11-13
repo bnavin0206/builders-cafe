@@ -105,7 +105,7 @@ function MenuPage(props: { params: Promise<{ slug: string }> }) {
                       : "bg-red-600 text-white"
                   }`}
                 >
-                  <span className="font-bold">#{order.index}</span> -{" "}
+                  <span className="font-bold">#{order.data.orderNumber ?? order.index}</span> -{" "}
                   {order.data.item}
                 </div>
               ))}

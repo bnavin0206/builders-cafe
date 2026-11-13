@@ -1,5 +1,6 @@
 import type { Event, Order } from "@/types";
 
+import { nextInSequence } from "@/lib/cafe/sequence";
 import {
   fetchSyncListItem,
   findSyncMapItems,
@@ -44,9 +45,21 @@ export async function cancelOrder(event: Event, index: number, data: Order) {
   });
 }
 
+/**
+ * Adds an order and returns its number: 1, 2, 3, ... in the order they come in.
+ * (The position in the Sync list is not used, because Twilio counts every
+ * change to the list, so it jumps.) If the counter is unavailable, the list
+ * position is used instead so the order is never lost.
+ */
 export async function addOrder(event: string, order: Order) {
-  const { index } = await pushToSyncList(event, order);
-  return index;
+  let orderNumber: number | undefined;
+  try {
+    orderNumber = await nextInSequence(`OrderCounter-${event}`);
+  } catch (e) {
+    console.error("Order counter failed, using the list position", (e as Error)?.message);
+  }
+  const { index } = await pushToSyncList(event, orderNumber ? { ...order, orderNumber } : order);
+  return orderNumber ?? index;
 }
 
 export async function fetchOrder(event: string, index: number) {
