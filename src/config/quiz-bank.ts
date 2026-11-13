@@ -133,13 +133,6 @@ export const quizBank: QuizQuestion[] = [
     correct: 0,
   },
   {
-    id: "twilio7",
-    category: "twilio",
-    text: "In what year was Twilio founded?",
-    options: ["2005","2008","2010","2012"],
-    correct: 1,
-  },
-  {
     id: "twilio8",
     category: "twilio",
     text: "What is the name of Twilio's drag-and-drop communication flow builder?",
