@@ -5,7 +5,7 @@ import type { Menus } from "@/types";
 export default {
   // Builder's Cafe menu, from the client. It may change later.
   // Free (the quiz prize): Cappuccino, Americano, Masala Chai, Espresso.
-  // Paid: drinks Rs 100 (water Rs 20); food Rs 100.
+  // Paid: most items Rs 50 (water Rs 20, cookies Rs 30, Masala Chai Rs 100); set on the live event.
   // The same drink is listed twice, once free and once priced. The title is
   // what attendees see and what orders use; the shortTitle must be unique
   // because the dashboard's menu picker identifies items by it. Items are shown
@@ -28,8 +28,8 @@ export default {
         price: 0,
       },
       {
-        shortTitle: "Masala Chai (Free)",
-        title: "Masala Chai",
+        shortTitle: "Elachi Chai (Free)",
+        title: "Elachi Chai",
         description: "Hot",
         category: "coffee",
         price: 0,
@@ -49,35 +49,35 @@ export default {
         title: "Cappuccino",
         description: "Coffee",
         category: "coffee",
-        price: 100,
+        price: 50,
       },
       {
         shortTitle: "Americano",
         title: "Americano",
         description: "Coffee",
         category: "coffee",
-        price: 100,
+        price: 50,
       },
       {
         shortTitle: "Espresso",
         title: "Espresso",
         description: "Coffee",
         category: "coffee",
-        price: 100,
+        price: 50,
       },
       {
         shortTitle: "Cafe Mocha",
         title: "Cafe Mocha",
         description: "Coffee",
         category: "coffee",
-        price: 100,
+        price: 50,
       },
       {
         shortTitle: "Cafe Latte",
         title: "Cafe Latte",
         description: "Coffee",
         category: "coffee",
-        price: 100,
+        price: 50,
       },
       {
         shortTitle: "Masala Chai",
@@ -91,14 +91,14 @@ export default {
         title: "Elachi Chai",
         description: "Tea & More",
         category: "coffee",
-        price: 100,
+        price: 50,
       },
       {
         shortTitle: "Hot Chocolate",
         title: "Hot Chocolate",
         description: "Tea & More",
         category: "coffee",
-        price: 100,
+        price: 50,
       },
       {
         shortTitle: "Water Bottle",
@@ -113,28 +113,28 @@ export default {
         title: "Mint Sandwich",
         description: "Sandwich",
         category: "savoury",
-        price: 100,
+        price: 50,
       },
       {
         shortTitle: "Cheese Sandwich",
         title: "Cheese Sandwich",
         description: "Sandwich",
         category: "savoury",
-        price: 100,
+        price: 50,
       },
       {
         shortTitle: "Potato Sandwich",
         title: "Potato Sandwich",
         description: "Sandwich",
         category: "savoury",
-        price: 100,
+        price: 50,
       },
       {
         shortTitle: "Chicken Sandwich",
         title: "Chicken Sandwich",
         description: "Sandwich",
         category: "savoury",
-        price: 100,
+        price: 50,
         veg: false,
       },
       {
@@ -142,28 +142,28 @@ export default {
         title: "Veg Puff",
         description: "Savoury",
         category: "savoury",
-        price: 100,
+        price: 50,
       },
       {
         shortTitle: "Veg Spring Roll",
         title: "Veg Spring Roll",
         description: "Savoury",
         category: "savoury",
-        price: 100,
+        price: 50,
       },
       {
         shortTitle: "Veg Cutlet",
         title: "Veg Cutlet",
         description: "Savoury",
         category: "savoury",
-        price: 100,
+        price: 50,
       },
       {
         shortTitle: "Chicken Cutlet",
         title: "Chicken Cutlet",
         description: "Savoury",
         category: "savoury",
-        price: 100,
+        price: 50,
         veg: false,
       },
       {
@@ -171,7 +171,7 @@ export default {
         title: "Chicken Puff",
         description: "Savoury",
         category: "savoury",
-        price: 100,
+        price: 50,
         veg: false,
       },
       {
@@ -179,7 +179,7 @@ export default {
         title: "Egg Puff",
         description: "Savoury",
         category: "savoury",
-        price: 100,
+        price: 50,
         veg: false,
       },
       {
@@ -187,21 +187,21 @@ export default {
         title: "Cookies",
         description: "Pastry",
         category: "savoury",
-        price: 100,
+        price: 30,
       },
       {
         shortTitle: "Danish",
         title: "Danish",
         description: "Pastry",
         category: "savoury",
-        price: 100,
+        price: 50,
       },
       {
         shortTitle: "Apple Pie",
         title: "Apple Pie",
         description: "Pastry",
         category: "savoury",
-        price: 100,
+        price: 50,
       },
     ],
     // Add-ons offered with the drinks. PLACEHOLDER list: the client confirms

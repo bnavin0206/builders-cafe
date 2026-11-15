@@ -24,10 +24,10 @@ export async function POST(request: Request) {
   const live = wantsFinance && cfg.live;
 
   const deps = realReportDeps();
-  const events = await deps.listOpenEvents();
+  const events = await deps.listEvents();
   const wanted = url.searchParams.get("event");
-  const event = events.find((e) => e.slug === wanted) ?? events[0];
-  if (!event) return new Response("No open event", { status: 404 });
+  const event = events.find((e) => e.slug === wanted) ?? events.find((e) => e.state === "OPEN") ?? events[0];
+  if (!event) return new Response("No event", { status: 404 });
 
   const r = await sendReportFor(deps, event, day, { ...cfg, sendEmpty: true }, !live);
   return Response.json({ event: event.slug, day, sentTo: live ? "finance team" : "test address",

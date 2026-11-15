@@ -44,7 +44,7 @@ describe("menu for the board", () => {
 describe("layout", () => {
   test("free items get their own panel; paid groups keep menu order", () => {
     const l = layoutMenu(menuForBoard(menus.barista.items));
-    expect(l.free.map((i) => i.title)).toEqual(["Cappuccino", "Americano", "Masala Chai", "Espresso"]);
+    expect(l.free.map((i) => i.title)).toEqual(["Cappuccino", "Americano", "Elachi Chai", "Espresso"]);
     const names = l.columns.flat().map((g) => g.name);
     expect(names).toEqual(["Drinks", "Sandwiches", "Savoury", "Pastries"]);
     // Veg first, then non-veg, in every section.

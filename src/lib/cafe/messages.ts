@@ -58,6 +58,8 @@ export const msg = {
   stillWaiting: (url: string) =>
     `We are waiting for your payment. Pay here:\n${url}`,
   payExpired: "Your payment link has expired. Reply MENU to order again.",
+  paymentFailed: (reason: string, url: string) =>
+    `Your payment did not go through${reason ? ` (${reason})` : ""}. If any money was deducted, your bank will refund it. Try again with the same link: ${url} Or reply MENU to start over.`,
   orderPlaced: (n: number, summary: string) =>
     `Order #${n} confirmed: ${summary}. We'll message you when it's ready.`,
   paymentReceived: (n: number, summary: string) =>

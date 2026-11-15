@@ -150,6 +150,10 @@ export interface PendingOrder {
   linkId: string;
   linkUrl: string;
   expiresAt: string; // ISO time
+  /** How many "your payment did not go through" messages were sent for this link (at most 3). */
+  failNotices?: number;
+  /** The last failed attempt we messaged about, so a repeated notice is ignored. */
+  lastFailedPaymentId?: string;
 }
 
 export interface AttendeeRecord {

@@ -1275,7 +1275,7 @@ describe("the real menu", () => {
     const s = new Sim(realEvent());
     s.enableLists();
     await s.passQuiz();
-    expect(s.lastList!.rows.map((r) => r.title)).toEqual(["Cappuccino", "Americano", "Masala Chai", "Espresso"]);
+    expect(s.lastList!.rows.map((r) => r.title)).toEqual(["Cappuccino", "Americano", "Elachi Chai", "Espresso"]);
     expect(s.lastList!.rows[0]).toMatchObject({ description: "FREE · Hot" });
   });
 
@@ -1295,7 +1295,7 @@ describe("the real menu", () => {
       "Savoury ▸",
       "Pastry ▸",
     ]);
-    expect(rows[0]).toMatchObject({ id: "1", description: "₹100 · Coffee" });
+    expect(rows[0]).toMatchObject({ id: "1", description: "₹50 · Coffee" });
     expect(rows[5]).toMatchObject({ id: "page:1", description: "Show the Tea & More items" });
     expect(rows.some((r) => r.id === "0")).toBe(false); // nothing picked yet
     expect(prompt).toContain("Showing: Coffee");
@@ -1348,7 +1348,7 @@ describe("the real menu", () => {
     await s.say("0"); // Done
     expect(s.record.stage).toBe(Stages.PICK_ADDONS);
     await s.say("0"); // no add-ons
-    expect(s.links[0]!.amountPaise).toBe(30000); // 100 + 100 + 100
+    expect(s.links[0]!.amountPaise).toBe(15000); // 50 + 50 + 50
     expect(s.record.cartGroup).toBeUndefined();
   });
 
@@ -1383,7 +1383,7 @@ describe("the real menu", () => {
     await s.say("1, 13"); // Cappuccino and Chicken Sandwich in one reply
     expect(s.record.stage).toBe(Stages.PICK_ADDONS);
     await s.say("0");
-    expect(s.links[0]!.amountPaise).toBe(20000);
+    expect(s.links[0]!.amountPaise).toBe(10000);
 
     const t = new Sim(realEvent());
     t.enableLists();
@@ -1427,7 +1427,7 @@ describe("the real menu", () => {
     expect(s.record.cartItems).toEqual(["Mint Sandwich"]);
     expect(s.lastList!.rows.at(-1)).toMatchObject({ id: "0", title: "Done" });
     await s.say("0");
-    expect(s.links[0]!.amountPaise).toBe(10000);
+    expect(s.links[0]!.amountPaise).toBe(5000);
     expect(s.record.pendingOrder).toMatchObject({ coffee: "Cappuccino", items: ["Mint Sandwich"] });
   });
 
@@ -1469,7 +1469,7 @@ describe("the real menu", () => {
     await s.say("Mint Sandwich");
     await s.say("Done");
     await s.say("0");
-    expect(s.links[0]!.amountPaise).toBe(10000);
+    expect(s.links[0]!.amountPaise).toBe(5000);
   });
 
   test("a bottle of water is Rs 20 and gets no add-ons", async () => {
@@ -1489,7 +1489,7 @@ describe("the real menu", () => {
     const s = new Sim(e);
     s.enableLists();
     await s.passQuiz();
-    expect(s.lastList!.rows.map((r) => r.title)).toEqual(["Americano", "Masala Chai", "Espresso"]);
+    expect(s.lastList!.rows.map((r) => r.title)).toEqual(["Americano", "Elachi Chai", "Espresso"]);
 
     const t = new Sim(e);
     t.enableLists();
@@ -1507,9 +1507,9 @@ describe("the real menu", () => {
   test("text mode has no pages: the whole menu is numbered", async () => {
     const s = new Sim(realEvent());
     await s.failQuiz();
-    expect(s.last).toContain("4. Cafe Mocha (₹100)");
+    expect(s.last).toContain("4. Cafe Mocha (₹50)");
     expect(s.last).toContain("9. Water Bottle (₹20)");
-    expect(s.last).toContain("22. Apple Pie (₹100)");
+    expect(s.last).toContain("22. Apple Pie (₹50)");
     await s.say("sandwich"); // not a page in text mode
     expect(s.last).toContain("not on the menu");
   });
@@ -1555,6 +1555,6 @@ describe("the real menu", () => {
     await s.failQuiz();
     await s.say("4, 13, 13"); // Cafe Mocha, Chicken Sandwich x2
     await s.say("0");
-    expect(s.links[0]!.amountPaise).toBe(30000); // 100 + 100 + 100
+    expect(s.links[0]!.amountPaise).toBe(15000); // 50 + 50 + 50
   });
 });

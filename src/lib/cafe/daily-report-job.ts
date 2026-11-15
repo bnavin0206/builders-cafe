@@ -1,5 +1,4 @@
 import { fetchSyncListItems, findSyncMapItems, getSyncService } from "@/lib/twilio";
-import { EventState } from "@/lib/utils";
 import { sendMail } from "@/lib/mail";
 import { listInvoices } from "./invoice-store";
 import { runDailyReports, type DayStatus, type ReportDeps } from "./daily-report-run";
@@ -31,13 +30,20 @@ async function reportsMap() {
 /** The real connections: Twilio Sync for events, orders and the sent-marker, and the email sender. */
 export function realReportDeps(): ReportDeps {
   return {
-    listOpenEvents: async () => {
-      const items = (await findSyncMapItems(EVENTS_MAP, { state: EventState.OPEN })) as Array<{ data: any }>;
-      return items.map((i) => ({ slug: String(i.data?.slug ?? ""), name: String(i.data?.name ?? i.data?.slug ?? "") })).filter((e) => e.slug);
+    listEvents: async () => {
+      // All events, whatever their state: ending an event must not cancel its report.
+      const items = (await findSyncMapItems(EVENTS_MAP, {})) as Array<{ data: any }>;
+      return items.map((i) => ({ slug: String(i.data?.slug ?? ""), name: String(i.data?.name ?? i.data?.slug ?? ""), state: String(i.data?.state ?? "") })).filter((e) => e.slug);
     },
     fetchOrders: async (slug) => {
-      const items = await fetchSyncListItems(slug);
-      return items.map((i: any) => ({ index: i.index, dateCreated: i.dateCreated, data: i.data }));
+      try {
+        const items = await fetchSyncListItems(slug);
+        return items.map((i: any) => ({ index: i.index, dateCreated: i.dateCreated, data: i.data }));
+      } catch (e: any) {
+        // An old event whose order list no longer exists has nothing to report.
+        if (e?.status === 404 || e?.cause?.status === 404) return [];
+        throw e;
+      }
     },
     invoiceNumbers: async () => Object.fromEntries((await listInvoices()).map((i) => [i.paymentId, i.number])),
     claim: async (slug, day) => {

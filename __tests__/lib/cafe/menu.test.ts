@@ -22,10 +22,10 @@ describe("Builder's Cafe menu", () => {
   });
 
   test("the free menu is the four quiz prizes", () => {
-    expect(free.map((i) => i.title)).toEqual(["Cappuccino", "Americano", "Masala Chai", "Espresso"]);
+    expect(free.map((i) => i.title)).toEqual(["Cappuccino", "Americano", "Elachi Chai", "Espresso"]);
   });
 
-  test("the paid menu: eight drinks at Rs 100 (the four free ones too), a bottle of water at Rs 20, 13 food items at Rs 100", () => {
+  test("the paid menu: eight drinks (Rs 50, Masala Chai Rs 100), a bottle of water at Rs 20, 13 food items (Rs 50, cookies Rs 30)", () => {
     const drinks = paid.filter((i) => i.category !== "savoury");
     const water = paid.find((i) => i.title === "Water Bottle");
     const food = paid.filter((i) => i.category === "savoury" && i.title !== "Water Bottle");
@@ -40,14 +40,14 @@ describe("Builder's Cafe menu", () => {
       "Hot Chocolate",
     ]);
     for (const i of drinks) {
-      expect(i.price).toBe(100);
+      expect(i.price).toBe(i.title === "Masala Chai" ? 100 : 50);
       expect(["Coffee", "Tea & More"]).toContain(i.description);
     }
     // Water is in the Tea & More section but is not a drink to add sugar to: no add-ons.
     expect(water).toMatchObject({ price: 20, description: "Tea & More", category: "savoury" });
     expect(food).toHaveLength(13);
     for (const i of food) {
-      expect(i.price).toBe(100);
+      expect(i.price).toBe(i.title === "Cookies" ? 30 : 50);
       expect(["Sandwich", "Savoury", "Pastry"]).toContain(i.description);
     }
     expect(paid.length + free.length).toBeLessThanOrEqual(30);

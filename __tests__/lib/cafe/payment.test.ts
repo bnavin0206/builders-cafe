@@ -3,7 +3,7 @@ import { createHmac } from "node:crypto";
 import { EventState } from "@/lib/utils";
 import { modes, Stages } from "@/types";
 import type { AttendeeRecord, Event, Order } from "@/types";
-import { confirmPayment, type PaymentIo } from "@/lib/cafe/payment";
+import { confirmPayment, handleLinkExpired, handlePaymentFailed, type PaymentIo } from "@/lib/cafe/payment";
 import type { CafeDeps } from "@/lib/cafe/flow";
 import { verifyWebhookSignature } from "@/lib/razorpay";
 
@@ -217,5 +217,69 @@ describe("verifyWebhookSignature", () => {
   });
   test("rejects a signature of the wrong length without throwing", () => {
     expect(verifyWebhookSignature(body, "abc", "s3cret")).toBe(false);
+  });
+});
+
+describe("handlePaymentFailed", () => {
+  const failed = { phone: PHONE, paymentId: "pay_f1", reason: "Payment declined by the bank" };
+
+  test("tells the customer and shows the same link", async () => {
+    const { state, io } = setup();
+    expect(await handlePaymentFailed(failed, io)).toBe("notified");
+    expect(state.sent).toEqual([
+      "Your payment did not go through (Payment declined by the bank). If any money was deducted, your bank will refund it. Try again with the same link: https://rzp.io/i/x Or reply MENU to start over.",
+    ]);
+    expect(state.record.stage).toBe(Stages.AWAITING_PAYMENT);
+    expect(state.record.pendingOrder).toMatchObject({ linkId: "plink_1", failNotices: 1, lastFailedPaymentId: "pay_f1" });
+  });
+
+  test("a repeated notice for the same attempt is ignored", async () => {
+    const { state, io } = setup();
+    await handlePaymentFailed(failed, io);
+    expect(await handlePaymentFailed(failed, io)).toBe("duplicate");
+    expect(state.sent).toHaveLength(1);
+  });
+
+  test("at most three notices for one link", async () => {
+    const { state, io } = setup();
+    for (const id of ["a", "b", "c"]) await handlePaymentFailed({ ...failed, paymentId: id }, io);
+    expect(await handlePaymentFailed({ ...failed, paymentId: "d" }, io)).toBe("limit");
+    expect(state.sent).toHaveLength(3);
+  });
+
+  test("says nothing when there is no order waiting for payment", async () => {
+    const { state, io } = setup({ stage: Stages.FIRST_ORDER, pendingOrder: undefined });
+    expect(await handlePaymentFailed(failed, io)).toBe("no-pending");
+    expect(state.sent).toEqual([]);
+  });
+
+  test("says nothing once the link itself has expired", async () => {
+    const { state, io } = setup({
+      pendingOrder: { coffee: "Cold Brew", amountPaise: 12000, linkId: "plink_1", linkUrl: "u", expiresAt: "2026-11-12T09:30:00.000Z" },
+    });
+    expect(await handlePaymentFailed(failed, io)).toBe("expired");
+    expect(state.sent).toEqual([]);
+  });
+
+  test("leaves out a reason that contains a link or is empty", async () => {
+    const { state, io } = setup();
+    await handlePaymentFailed({ ...failed, reason: "see https://evil.example" }, io);
+    expect(state.sent[0]).toMatch(/^Your payment did not go through\. If any money was deducted/);
+  });
+});
+
+describe("handleLinkExpired", () => {
+  test("tells the customer and resets them to the menu", async () => {
+    const { state, io } = setup();
+    expect(await handleLinkExpired({ phone: PHONE, linkId: "plink_1" }, io)).toBe("notified");
+    expect(state.sent).toEqual(["Your payment link has expired. Reply MENU to order again."]);
+    expect(state.record.stage).toBe(Stages.VERIFIED_USER);
+    expect(state.record.pendingOrder).toBeUndefined();
+  });
+
+  test("ignores a different, older link", async () => {
+    const { state, io } = setup();
+    expect(await handleLinkExpired({ phone: PHONE, linkId: "plink_OLD" }, io)).toBe("no-pending");
+    expect(state.sent).toEqual([]);
   });
 });

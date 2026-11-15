@@ -38,7 +38,8 @@ export function reportConfig(env: Record<string, string | undefined> = process.e
 export type DayStatus = "sending" | "sent" | "empty" | "failed" | "skipped";
 
 export interface ReportDeps {
-  listOpenEvents(): Promise<Array<{ slug: string; name: string }>>;
+  /** Every event, open or ended: a day's report must not depend on the event still being open. */
+  listEvents(): Promise<Array<{ slug: string; name: string; state?: string }>>;
   fetchOrders(slug: string): Promise<Array<{ index: number; dateCreated: Date; data: unknown }>>;
   /** GST invoice numbers by payment ID (optional). */
   invoiceNumbers?(): Promise<Record<string, string>>;
@@ -101,7 +102,7 @@ export async function runDailyReports(
   if (minutesIST(now) >= cfg.sendMinutes) days.push(istDay(now));
 
   const out: Array<{ slug: string; day: string; result: string }> = [];
-  for (const event of await deps.listOpenEvents()) {
+  for (const event of await deps.listEvents()) {
     for (const day of days) {
       if (!(await deps.claim(event.slug, day))) continue;
       try {

@@ -20,7 +20,7 @@ function deps(over: Partial<ReportDeps> = {}): ReportDeps & { sent: any[] } {
   const sent: any[] = [];
   return {
     sent,
-    listOpenEvents: async () => [{ slug: "e", name: "Cafe" }],
+    listEvents: async () => [{ slug: "e", name: "Cafe" }],
     fetchOrders: async () => [order(1, "2026-11-12T05:00:00Z")],
     claim: async () => true,
     mark: async () => {},
