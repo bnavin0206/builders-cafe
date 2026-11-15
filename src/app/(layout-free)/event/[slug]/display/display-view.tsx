@@ -96,7 +96,14 @@ function StatusPanel({
   useEffect(() => {
     const onResize = () => setSize((n) => n + 1);
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    // The panel also changes height when the menu beside it changes (an item
+    // switched off), so watch the panel itself, not only the window.
+    const watcher = typeof ResizeObserver !== "undefined" && panel.current ? new ResizeObserver(onResize) : null;
+    if (watcher && panel.current) watcher.observe(panel.current);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      watcher?.disconnect();
+    };
   }, []);
 
   useIsoLayoutEffect(() => {
@@ -195,6 +202,11 @@ export function DisplayView({
         </main>
       ) : (
         <main className="dp-main">
+          <div className="dp-band">
+            <div className="dp-band-brand">Builder&apos;s Cafe</div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="dp-band-logo" src="/twilio.svg" alt="Twilio" />
+          </div>
           <div className="dp-menu">
             <section className="dp-free">
               <div className="dp-free-text">

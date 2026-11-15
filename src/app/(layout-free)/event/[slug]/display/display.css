@@ -36,6 +36,9 @@
 .dp-clock--stale { opacity: .7; }
 .dp-clock--stale::before { background: #8a8a8a; }
 
+/* ---- brand band: shown between the orders and the menu on an upright screen ---- */
+.dp-band { display: none; }
+
 /* ---- two halves ---- */
 .dp-main { display: grid; grid-template-columns: 62fr 38fr; gap: calc(1.8 * var(--r)); min-height: 0; padding-bottom: calc(1.2 * var(--r)); }
 .dp-main--notice { grid-template-columns: 1fr; place-items: center; }
@@ -152,13 +155,21 @@
 
 /* ---- upright screen: orders on top, menu below ---- */
 @media (orientation: portrait) {
-  .dp-root { --r: min(calc(100vw / 67.5), calc(100vh / 120)); --k: var(--k-port, 1); grid-template-rows: calc(6.4 * var(--r)) 1fr calc(4.4 * var(--r)); padding: 0 calc(1.8 * var(--r)); }
-  .dp-brand { font-size: calc(3 * var(--r)); }
-  .dp-brand small { display: none; }
-  .dp-logo { height: calc(2.1 * var(--r)); }
-  .dp-clock { font-size: calc(1.6 * var(--r)); }
-  .dp-main { grid-template-columns: 1fr; grid-template-rows: auto 1fr; gap: calc(1.4 * var(--r)); }
-  .dp-orders { order: -1; grid-template-columns: 1fr 1fr; grid-template-rows: calc(26 * var(--r)) calc(18 * var(--r)); gap: calc(1.2 * var(--r)); }
+  .dp-root { --r: min(calc(100vw / 67.5), calc(100vh / 120)); --k: var(--k-port, 1); grid-template-rows: calc(2.6 * var(--r)) 1fr calc(4.4 * var(--r)); padding: 0 calc(1.8 * var(--r)); }
+  /* The title and logo move into the band; the top line keeps only the clock. */
+  .dp-bar { justify-content: flex-end; }
+  .dp-bar .dp-brand, .dp-bar .dp-logo { display: none; }
+  .dp-clock { font-size: calc(1.3 * var(--r)); }
+  /* The orders take the free height (at least 34r); the band and the menu take what they need. */
+  .dp-main { grid-template-columns: 1fr; grid-template-rows: minmax(calc(34 * var(--r)), 1fr) auto auto; gap: calc(1.4 * var(--r)); }
+  .dp-orders { order: -2; grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 58fr) minmax(0, 42fr); gap: calc(1.2 * var(--r)); }
+  .dp-band {
+    order: -1; display: flex; align-items: center; justify-content: space-between; padding: calc(.2 * var(--r)) calc(.4 * var(--r));
+    border-top: calc(.14 * var(--r)) solid rgba(255, 184, 0, .55); border-bottom: calc(.14 * var(--r)) solid rgba(255, 184, 0, .55);
+  }
+  .dp-band-brand { font-family: var(--tw-display); font-weight: 800; font-size: calc(3.2 * var(--r)); line-height: 1.1; color: var(--marigold); letter-spacing: .02em; white-space: nowrap; }
+  .dp-band-logo { height: calc(2.4 * var(--r)); width: auto; display: block; }
+  .dp-menu { grid-template-rows: auto auto; }
   .dp-status--ready { grid-column: 1 / -1; }
   .dp-status--ready .dp-head h2 { font-size: calc(3.4 * var(--r)); }
   .dp-status--ready .dp-token { --stub: calc(8.6 * var(--r)); min-height: calc(6.4 * var(--r)); }

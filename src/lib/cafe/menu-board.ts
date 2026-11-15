@@ -141,7 +141,7 @@ export function fitDisplayScale(layout: MenuLayout, orientation: "landscape" | "
   const land = orientation === "landscape";
   // Height left for the paid panels, then per column: a fixed part (title,
   // padding, lines under headings) plus a part that shrinks (rows, headings).
-  const avail = land ? 44 : 45;
+  const avail = land ? 44 : 50;
   const fixed = land ? 4.8 : 4;
   const heading = land ? 3.2 : 3.4;
   const row = land ? 2.9 : 3.3;
