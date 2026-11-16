@@ -5,9 +5,11 @@ import { useSyncList, useSyncMap } from "@/provider/syncProvider";
 
 import type { Event } from "@/types";
 import { EventState } from "@/lib/utils";
+import { cafeRules } from "@/config/cafe-rules";
 import { useToast } from "@/components/ui/use-toast";
 import HeaderControls from "./headerControls";
 import OrdersList from "./ordersList";
+import TodayStrip from "./todayStrip";
 
 function playChime(ctx: AudioContext) {
   const frequencies = [880, 1100, 1320];
@@ -162,6 +164,10 @@ export default function OrdersInterface({
           <HeaderControls event={internalEvent} updateEvent={fetchUpdateEvent} />
         </div>
       </div>
+      <TodayStrip
+        orders={ordersList as any}
+        freeLimit={internalEvent?.freeCoffeeLimitPerDay ?? cafeRules.freeCoffeesPerDay}
+      />
       <OrdersList
         // @ts-ignore // TODO Fix this TS issue
         ordersList={ordersList}

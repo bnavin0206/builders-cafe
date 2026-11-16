@@ -70,6 +70,8 @@ export interface Order {
   // Attendee's sign-up name, so staff can match a pickup by name.
   name?: string;
   orderNumber?: number;
+  /** When the order was placed (ISO). The live list in the browser has no creation time. */
+  createdAt?: string;
   originalText?: string;
   status: "queued" | "cancelled" | "ready" | "delivered";
   reminded?: true;

@@ -70,7 +70,8 @@ export async function addOrder(event: string, order: Order) {
   } catch (e) {
     console.error("Order counter failed, using the list position", (e as Error)?.message);
   }
-  const { index } = await pushToSyncList(event, orderNumber ? { ...order, orderNumber } : order);
+  const stamped = { ...order, createdAt: new Date().toISOString() };
+  const { index } = await pushToSyncList(event, orderNumber ? { ...stamped, orderNumber } : stamped);
   return orderNumber ?? index;
 }
 

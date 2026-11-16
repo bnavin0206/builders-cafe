@@ -56,6 +56,7 @@ export async function POST(request: Request) {
     item = await pushToSyncList(data.event, {
       ...data.order,
       ...(orderNumber ? { orderNumber } : {}),
+      createdAt: new Date().toISOString(),
       channel: "api",
     });
   } catch (e: any) {
