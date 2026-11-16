@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { orderTag, type TagColor } from "@/lib/cafe/order-tag";
-import { newestFirst } from "@/lib/cafe/order-sort";
+import { groupByDay, newestFirst } from "@/lib/cafe/order-sort";
 
 import { Privilege } from "@/proxy";
 import { getCookie } from "cookies-next";
@@ -41,6 +41,8 @@ export default function OrdersList({
 }) {
   const { toast } = useToast();
   const [noOfOrdersVisible, showMore] = useState<number>(50);
+  // Which delivered days are open; the latest day is open unless the barista folds it.
+  const [openDays, setOpenDays] = useState<Record<string, boolean>>({});
   const [processingOrders, setProcessingOrders] = useState<Set<string>>(
     new Set(),
   );
@@ -68,10 +70,32 @@ export default function OrdersList({
     (order) => order.data.status === "queued" || order.data.status === "ready",
   );
   const visibleQueue = listComponent(queue.toSpliced(noOfOrdersVisible));
-  // Delivered and cancelled: the most recent first. (The queue stays oldest first, so orders are made in turn.)
-  const delivered = listComponent(
-    newestFirst(ordersList.filter((order) => order.data.status === "delivered")),
-  );
+  // Delivered: grouped by day, the latest day first and open, older days folded away.
+  // Cancelled: the most recent first. (The queue stays oldest first, so orders are made in turn.)
+  const deliveredDays = groupByDay(ordersList.filter((order) => order.data.status === "delivered"));
+  const delivered = deliveredDays.map((section, n) => {
+    const open = openDays[section.day] ?? n === 0;
+    return (
+      <section key={section.day} className="mb-3">
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => setOpenDays((d) => ({ ...d, [section.day]: !open }))}
+          className="mb-2 flex w-full items-center justify-between rounded-lg bg-warm px-3 py-2 text-left text-sm font-semibold text-twilio-ink"
+        >
+          <span>
+            {section.label}
+            {section.dateLabel && section.dateLabel !== section.label ? ` · ${section.dateLabel}` : ""}
+          </span>
+          <span className="flex items-center gap-2 text-xs font-medium text-gray-500">
+            {section.items.length} delivered
+            <span aria-hidden>{open ? "▾" : "▸"}</span>
+          </span>
+        </button>
+        {open && listComponent(section.items)}
+      </section>
+    );
+  });
   const cancelled = listComponent(
     newestFirst(ordersList.filter((order) => order.data.status === "cancelled")),
   );
