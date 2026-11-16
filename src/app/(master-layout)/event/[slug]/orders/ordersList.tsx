@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { orderTag, type TagColor } from "@/lib/cafe/order-tag";
+import { newestFirst } from "@/lib/cafe/order-sort";
 
 import { Privilege } from "@/proxy";
 import { getCookie } from "cookies-next";
@@ -67,11 +68,12 @@ export default function OrdersList({
     (order) => order.data.status === "queued" || order.data.status === "ready",
   );
   const visibleQueue = listComponent(queue.toSpliced(noOfOrdersVisible));
+  // Delivered and cancelled: the most recent first. (The queue stays oldest first, so orders are made in turn.)
   const delivered = listComponent(
-    ordersList.filter((order) => order.data.status === "delivered"),
+    newestFirst(ordersList.filter((order) => order.data.status === "delivered")),
   );
   const cancelled = listComponent(
-    ordersList.filter((order) => order.data.status === "cancelled"),
+    newestFirst(ordersList.filter((order) => order.data.status === "cancelled")),
   );
 
   return (
