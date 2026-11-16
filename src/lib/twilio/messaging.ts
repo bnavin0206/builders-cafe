@@ -67,26 +67,32 @@ export async function sendMessage(
   const defaultFrom = TWILIO_MESSAGING_SERVICE_SID;
 
   try {
-    throttle(() => {
-      twilioClient.messages.create({
-        to,
-        // Pin the exact sender the recipient last messaged in on — otherwise
-        // the Messaging Service can auto-select a different sender (e.g. RCS
-        // vs WhatsApp) that may be outside that channel's 24h session window.
-        ...(from
-          ? { from }
-          : TWILIO_MESSAGING_SERVICE_SID
-            ? { messagingServiceSid: TWILIO_MESSAGING_SERVICE_SID }
-            : { from: defaultFrom }),
-        ...(body ? { body } : {}),
-        ...(contentSid ? { contentSid } : {}),
-        ...(contentVariables ? { contentVariables } : {}),
-      } as any).catch((err: unknown) => {
-        // The send is queued and not awaited, so a rejection would otherwise
-        // surface as an unhandled rejection.
-        console.error("Could not send message", err);
-      });
-    });
+    // Wait until Twilio has accepted the message, so callers that chain messages
+    // can rely on them being created in order.
+    await throttle(() =>
+      twilioClient.messages
+        .create({
+          to,
+          // Pin the exact sender the recipient last messaged in on — otherwise
+          // the Messaging Service can auto-select a different sender (e.g. RCS
+          // vs WhatsApp) that may be outside that channel's 24h session window.
+          ...(from
+            ? { from }
+            : TWILIO_MESSAGING_SERVICE_SID
+              ? { messagingServiceSid: TWILIO_MESSAGING_SERVICE_SID }
+              : { from: defaultFrom }),
+          ...(body ? { body } : {}),
+          ...(contentSid ? { contentSid } : {}),
+          ...(contentVariables ? { contentVariables } : {}),
+        } as any)
+        .then(
+          () => undefined,
+          (err: unknown) => {
+            // Never let one failed send break the caller or the messages behind it.
+            console.error("Could not send message", err);
+          },
+        ),
+    );
     return;
   } catch (err) {
     console.log(err);

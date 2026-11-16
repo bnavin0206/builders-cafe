@@ -266,7 +266,7 @@ describe("survey after the quiz", () => {
     await s.passQuiz(false);
     expect(s.record.stage).toBe(Stages.SURVEY);
     expect(s.record.surveyKind).toBe("dev");
-    expect(s.sent.some((m) => m.includes("5 quick questions"))).toBe(true);
+    expect(s.sent.some((m) => m.includes("5 quick survey questions"))).toBe(true);
     expect(s.last).toContain("Question 1 of 5");
     expect(s.last).toContain("1. Managing project deadlines and workloads");
     await s.say("2");

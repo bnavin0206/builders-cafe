@@ -23,9 +23,9 @@ export const msg = {
   freeOver:
     "Free coffees are over for today. You can still order from our paid menu. Reply with the numbers of the items you want, like 1 or 1,3.",
   surveyIntroDev: (count: number) =>
-    `All correct! Before your free coffee, please answer ${count} quick questions.`,
+    `All correct! Before your free coffee, please answer ${count} quick survey questions.`,
   surveyIntroGeneral: (count: number) =>
-    `Thanks for playing! Before we go on, please answer ${count} quick questions.`,
+    `Thanks for playing! Before we go on, please answer ${count} quick survey questions.`,
   surveySingleInvalid: "Please reply with the number of your answer.",
   surveyMultiInvalid: "Please reply with the numbers of your answers, like 1,3.",
   surveyTypeOther: "Please type your answer.",

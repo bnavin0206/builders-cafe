@@ -284,3 +284,5 @@ Failed payments: the Razorpay webhook also listens for `payment.failed` and `pay
 Daily report: it now covers every event, open or ended, so ending an event before 23:30 no longer cancels that day's report. It still looks only at yesterday and today; an older missed day is sent by hand with the "Send report to finance" button and the date.
 
 Display page, upright screen: the order status comes first, then a band with "Builder's Cafe" (left) and the Twilio logo (right), then the menu. The menu panels take only the height their items need and the orders get the rest (at least 34 units). On a wide screen nothing changed. The page re-fits the order lists when the menu above changes height.
+
+Message order: everything sent to one customer during one request goes out through an ordered queue (`ordered-send.ts`) and each send waits until Twilio has accepted it, so "Thanks for playing! ... please answer 3 quick survey questions." always arrives before "Question 1 of 3" (before, two messages sent at the same moment could arrive swapped).

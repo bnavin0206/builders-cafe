@@ -10,6 +10,7 @@ import { cancelPaymentLink, createPaymentLink } from "@/lib/razorpay";
 import { fetchSyncListItems } from "@/lib/twilio";
 import { countFreeCoffees } from "./free-limit";
 import { buildLead, sendLead } from "./leads-sink";
+import { makeOrderedQueue } from "./ordered-send";
 import { getCafeListMessage } from "@/scripts/fetchContentTemplates";
 import { redact, EventLengthInSeconds } from "@/lib/utils";
 import type { AttendeeRecord, Event } from "@/types";
@@ -26,6 +27,9 @@ function nullify(patch: Partial<AttendeeRecord>) {
 
 /** The flow's dependencies wired to Twilio Sync, Twilio messaging and Razorpay. */
 export function realDeps(event: Event, sender: string, from: string): CafeDeps {
+  // Everything this customer is sent during one request goes out in the order it
+  // was written, so a short message never arrives after the question that follows it.
+  const inOrder = makeOrderedQueue();
   return {
     now: () => new Date(),
     rng: Math.random,
@@ -38,12 +42,12 @@ export function realDeps(event: Event, sender: string, from: string): CafeDeps {
       );
     },
     send: (text) => {
-      sendMessage(sender, text, undefined, undefined, from);
+      void inOrder(() => sendMessage(sender, text, undefined, undefined, from));
     },
     sendList: async (prompt, rows) => {
       try {
         const m = await getCafeListMessage(prompt, rows);
-        sendMessage(sender, "", m.contentSid, m.contentVariables, from);
+        void inOrder(() => sendMessage(sender, "", m.contentSid, m.contentVariables, from));
         return true;
       } catch (e) {
         // Most likely the list templates are not created yet: use text.
