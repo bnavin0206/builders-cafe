@@ -57,6 +57,7 @@ describe("menu board feed", () => {
         { title: "Latte", price: 80, group: "Hot", veg: true },
         { title: "Chicken Puff", price: 100, group: "Savoury", veg: false },
       ],
+      freeForAll: false,
     });
   });
 

@@ -18,15 +18,18 @@ export default function DisplayClient({
   slug,
   boardKey,
   initialMenu,
+  initialFreeForAll = false,
   qrSvg,
 }: {
   slug: string;
   boardKey: string;
   initialMenu: BoardMenuItem[];
+  initialFreeForAll?: boolean;
   qrSvg: string | null;
 }) {
   const [board, setBoard] = useState<Board | null>(null);
   const [menu, setMenu] = useState<BoardMenuItem[]>(initialMenu);
+  const [freeForAll, setFreeForAll] = useState(initialFreeForAll);
   const [stale, setStale] = useState(false);
   const [invalid, setInvalid] = useState(false);
   const [fresh, setFresh] = useState<Set<number>>(new Set());
@@ -83,8 +86,9 @@ export default function DisplayClient({
       try {
         const res = await fetch(`${base}/menu-board${key}`, { cache: "no-store" });
         if (!res.ok || stopped) return;
-        const data = (await res.json()) as { items: BoardMenuItem[] };
+        const data = (await res.json()) as { items: BoardMenuItem[]; freeForAll?: boolean };
         if (!stopped && Array.isArray(data.items)) setMenu(data.items);
+        if (!stopped) setFreeForAll(data.freeForAll === true);
       } catch {
         // keep showing the last menu
       }
@@ -105,6 +109,7 @@ export default function DisplayClient({
     <DisplayView
       board={board}
       menu={menu}
+      freeForAll={freeForAll}
       qrSvg={qrSvg}
       fresh={fresh}
       stale={stale}

@@ -163,6 +163,7 @@ function StatusPanel({
 export function DisplayView({
   board,
   menu,
+  freeForAll = false,
   qrSvg,
   fresh = new Set<number>(),
   stale = false,
@@ -170,6 +171,8 @@ export function DisplayView({
 }: {
   board: Board | null;
   menu: BoardMenuItem[];
+  /** The "free for everyone who answers the quiz" switch is on. */
+  freeForAll?: boolean;
   qrSvg: string | null;
   fresh?: Set<number>;
   stale?: boolean;
@@ -210,9 +213,9 @@ export function DisplayView({
           <div className="dp-menu">
             <section className="dp-free">
               <div className="dp-free-text">
-                <div className="dp-eyebrow">For quiz winners</div>
+                <div className="dp-eyebrow">{freeForAll ? "Free with the quiz" : "For quiz winners"}</div>
                 <h2>Free coffee</h2>
-                <p className="dp-how">Get all 3 quiz answers right on WhatsApp. While free coffees last.</p>
+                <p className="dp-how">{freeForAll ? "Answer 3 quick questions on WhatsApp for a free coffee. While free coffees last." : "Get all 3 quiz answers right on WhatsApp. While free coffees last."}</p>
               </div>
               {layout.free.length > 0 && (
                 <ul className="dp-free-list">

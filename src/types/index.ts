@@ -86,6 +86,8 @@ export interface Order {
   payMode?: "pos" | "upi" | "cash";
   // True when the order includes the free coffee (counted against the daily limit).
   freeCoffee?: boolean;
+  // True when that free coffee was given to someone who did not pass, through the "free for everyone" switch.
+  freeForAll?: boolean;
 }
 
 /** One row of a WhatsApp list picker. */
@@ -133,6 +135,8 @@ export interface Event {
   lastClearedAt?: string;
   // Most free coffees given in one day (Bengaluru time). Unset means the default.
   freeCoffeeLimitPerDay?: number;
+  /** While true, everyone who finishes the quiz gets the free coffee, right or wrong. */
+  freeForAllQuizTakers?: boolean;
 }
 
 export interface SegmentData {

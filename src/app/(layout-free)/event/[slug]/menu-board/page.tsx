@@ -46,6 +46,7 @@ export default async function MenuBoardPage(props: {
       slug={slug}
       boardKey={candidate!}
       initial={menuForBoard(event.selection?.items ?? [])}
+      initialFreeForAll={event.freeForAllQuizTakers === true}
       qrSvg={qrSvg}
     />
   );

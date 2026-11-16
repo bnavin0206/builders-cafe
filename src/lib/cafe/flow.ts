@@ -76,6 +76,14 @@ export interface CafeInput {
   record: AttendeeRecord;
 }
 
+/**
+ * Who gets the free coffee: a winner, or, while the "free for everyone" switch
+ * is on, anyone who finished the quiz (right or wrong).
+ */
+export function earnsFree(record: Partial<AttendeeRecord>, event: Event): boolean {
+  return record.quizResult === "passed" || (record.quizResult === "failed" && event.freeForAllQuizTakers === true);
+}
+
 const isReset = (m: string) => /^(menu|start|order|hi|hello)$/i.test(m.trim());
 const isNone = (m: string) =>
   ["0", "no", "none", "skip", "no thanks", "done", "no add-ons", "no more"].includes(
@@ -212,6 +220,10 @@ export async function enter(
   ) {
     return handleCafeMessage({ ...input, message: "" }, deps, rules, bank);
   }
+  if (record.quizResult === "failed" && earnsFree(record, input.event)) {
+    // The "free for everyone" switch is on: someone who played earlier gets their free coffee now.
+    return begin(input, deps, rules, bank);
+  }
   if (hasTakenPart(record) && rules.rescanAfterQuizGoesToPaid) {
     return showCoffeeMenu(input, deps, "paid", { text: msg.alreadyTookQuiz, list: listMsg.alreadyTookQuiz });
   }
@@ -231,10 +243,10 @@ export async function begin(
 ): Promise<void> {
   const { record, phone } = input;
 
-  if (record.quizResult === "failed") {
+  if (record.quizResult === "failed" && !earnsFree(record, input.event)) {
     return showCoffeeMenu(input, deps, "paid", { text: msg.quizFailedPaid, list: listMsg.quizFailedPaid });
   }
-  if (record.quizResult === "passed") {
+  if (earnsFree(record, input.event)) {
     if (!freeAvailable(record, rules)) {
       return showCoffeeMenu(input, deps, "paid", { text: msg.freeUsed, list: listMsg.freeUsed });
     }
@@ -373,16 +385,17 @@ async function answerSurvey(input: CafeInput, deps: CafeDeps, rules: CafeRules) 
 /** After the survey: the free coffee for a winner, the paid menu for everyone else. */
 async function afterSurvey(input: CafeInput, deps: CafeDeps, rules: CafeRules) {
   const { record, phone } = input;
-  if (record.quizResult === "passed") {
+  if (earnsFree(record, input.event)) {
     if (!freeAvailable(record, rules)) {
       return showCoffeeMenu(input, deps, "paid", { text: msg.freeUsed, list: listMsg.freeUsed });
     }
     if (!(await freeOpen(input, deps, rules))) {
       return showCoffeeMenu(input, deps, "paid", { text: msg.freeOver, list: listMsg.freeOver });
     }
+    const won = record.quizResult === "passed";
     return showCoffeeMenu(input, deps, "free", {
-      text: msg.surveyDonePassed,
-      list: listMsg.surveyDonePassed,
+      text: won ? msg.surveyDonePassed : msg.surveyDoneFreeForAll,
+      list: won ? listMsg.surveyDonePassed : listMsg.surveyDoneFreeForAll,
     });
   }
   if (rules.failedQuizCanBuyPaidItems) {
@@ -1009,6 +1022,7 @@ export async function placeOrder(
     channel: "whatsapp",
     amountPaise: order.amountPaise,
     ...(order.coffee && isFree(order.coffee) ? { freeCoffee: true } : {}),
+    ...(order.coffee && isFree(order.coffee) && record.quizResult === "failed" && event.freeForAllQuizTakers === true ? { freeForAll: true } : {}),
     ...(order.paymentId ? { paymentId: order.paymentId } : {}),
   };
   const n = await deps.addOrder(queued);

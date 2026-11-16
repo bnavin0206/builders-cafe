@@ -31,6 +31,8 @@ export const msg = {
   surveyTypeOther: "Please type your answer.",
   surveyDonePassed:
     "Thank you! Your coffee is free. Choose it by replying with its number.",
+  surveyDoneFreeForAll:
+    "Thanks for playing! Your coffee is free. Choose it by replying with its number.",
   surveyDoneFailed:
     "Thank you! Sorry, that was not enough for a free coffee. You can still order from our paid menu. Reply with the numbers of the items you want, like 1 or 1,3.",
   blocked:
@@ -87,6 +89,7 @@ export const listMsg = {
   freeOver:
     "Free coffees are over for today. You can still order from our paid menu. Tap Choose and pick items one at a time, then tap Done.",
   surveyDonePassed: "Thank you! Your coffee is free. Tap Choose to pick it.",
+  surveyDoneFreeForAll: "Thanks for playing! Your coffee is free. Tap Choose to pick it.",
   surveyDoneFailed:
     "Thank you! Sorry, that was not enough for a free coffee. You can still order from our paid menu. Tap Choose and pick items one at a time, then tap Done.",
   coffeePrompt: "Choose your coffee from the list:",

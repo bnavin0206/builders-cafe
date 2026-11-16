@@ -11,14 +11,17 @@ export default function MenuBoardClient({
   slug,
   boardKey,
   initial,
+  initialFreeForAll = false,
   qrSvg,
 }: {
   slug: string;
   boardKey: string;
   initial: BoardMenuItem[];
+  initialFreeForAll?: boolean;
   qrSvg: string | null;
 }) {
   const [items, setItems] = useState<BoardMenuItem[]>(initial);
+  const [freeForAll, setFreeForAll] = useState(initialFreeForAll);
   const stopped = useRef(false);
 
   useEffect(() => {
@@ -31,8 +34,9 @@ export default function MenuBoardClient({
           { cache: "no-store" },
         );
         if (res.ok) {
-          const data = (await res.json()) as { items: BoardMenuItem[] };
+          const data = (await res.json()) as { items: BoardMenuItem[]; freeForAll?: boolean };
           if (!stopped.current && Array.isArray(data.items)) setItems(data.items);
+          if (!stopped.current) setFreeForAll(data.freeForAll === true);
         }
       } catch {
         // keep showing the last menu
@@ -46,5 +50,5 @@ export default function MenuBoardClient({
     };
   }, [slug, boardKey]);
 
-  return <MenuBoardView items={items} qrSvg={qrSvg} />;
+  return <MenuBoardView items={items} freeForAll={freeForAll} qrSvg={qrSvg} />;
 }

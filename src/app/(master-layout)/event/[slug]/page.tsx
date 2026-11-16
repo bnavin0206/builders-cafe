@@ -360,6 +360,26 @@ function EventPage({ params }: { params: Promise<{ slug: string }> }) {
               <Input disabled id="eventSlug" placeholder="Auto-generated" value={internalEvent.slug} />
             </div>
             {/* "Max Orders Per Customer / Day" is hidden: the cafe flow does not use it (the value stays at its default). */}
+            {!isNewEvent && (
+              <div className="sm:col-span-2 flex items-start justify-between gap-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <div>
+                  <Label htmlFor="freeForAll" className="font-semibold">
+                    Free coffee for everyone who answers the 3 quiz questions
+                  </Label>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {internalEvent.freeForAllQuizTakers
+                      ? "ON: everyone who finishes the 3 questions gets the free coffee, right or wrong. The daily limit still applies, and nobody gets a second free coffee."
+                      : "OFF: only people who answer all 3 correctly get the free coffee. Everyone else sees the paid menu."}
+                  </p>
+                </div>
+                <Switch
+                  id="freeForAll"
+                  aria-label="Free coffee for everyone who answers the quiz"
+                  checked={internalEvent.freeForAllQuizTakers === true}
+                  onCheckedChange={(on) => updateEvent({ ...internalEvent, freeForAllQuizTakers: on })}
+                />
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="freeCoffeeLimitPerDay">Free coffees per day</Label>
               <Input

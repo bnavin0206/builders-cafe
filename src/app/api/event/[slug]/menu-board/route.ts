@@ -22,7 +22,7 @@ export async function GET(
     const event = await getEvent(slug);
     if (!event) return new Response("Not found", { status: 404 });
     return Response.json(
-      { items: menuForBoard(event.selection?.items ?? []) },
+      { items: menuForBoard(event.selection?.items ?? []), freeForAll: event.freeForAllQuizTakers === true },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (e) {

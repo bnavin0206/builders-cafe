@@ -1558,3 +1558,115 @@ describe("the real menu", () => {
     expect(s.links[0]!.amountPaise).toBe(15000); // 50 + 50 + 50
   });
 });
+
+describe("free coffee for everyone who answers the quiz (the switch)", () => {
+  const on = () => {
+    const evt = event();
+    evt.freeForAllQuizTakers = true;
+    return evt;
+  };
+
+  test("off: someone who answers wrongly gets the paid menu, as before", async () => {
+    const s = new Sim(event());
+    await s.failQuiz();
+    expect(s.record.menuMode).toBe("paid");
+    expect(s.last).toContain("not enough for a free coffee");
+  });
+
+  test("on: someone who answers wrongly still gets the survey, then the free coffee", async () => {
+    const s = new Sim(on());
+    await s.start();
+    for (let i = 0; i < 3; i++) await s.answer(false);
+    expect(s.record.quizResult).toBe("failed");
+    expect(s.record.surveyKind).toBe("general"); // the survey does not change
+    expect(s.record.stage).toBe(Stages.SURVEY);
+    await s.finishSurvey();
+    expect(s.record.menuMode).toBe("free");
+    expect(s.record.stage).toBe(Stages.PICK_COFFEE);
+    expect(s.last).toContain("Thanks for playing! Your coffee is free.");
+    expect(s.last).not.toContain("not enough");
+    expect(s.record.quizResult).toBe("failed"); // the result itself is kept
+  });
+
+  test("on: the free coffee is ordered and marked as given to everyone", async () => {
+    const s = new Sim(on());
+    await s.failQuiz();
+    await s.say("1"); // first free drink
+    await s.say("0"); // no add-ons
+    await s.say("0"); // no extra
+    expect(s.orders).toHaveLength(1);
+    expect(s.orders[0]).toMatchObject({ freeCoffee: true, freeForAll: true, amountPaise: 0 });
+  });
+
+  test("on: a winner's order is not marked (they earned it)", async () => {
+    const s = new Sim(on());
+    await s.passQuiz();
+    await s.say("1");
+    await s.say("0");
+    await s.say("0");
+    expect(s.orders[0]).toMatchObject({ freeCoffee: true });
+    expect(s.orders[0]!.freeForAll).toBeUndefined();
+  });
+
+  test("on: the daily limit still applies, before the quiz and at the end of the survey", async () => {
+    const evt = on();
+    evt.freeCoffeeLimitPerDay = 5;
+    const before = new Sim(evt);
+    before.deps.freeCoffeesToday = async () => 5;
+    await before.start(); // limit already reached: no quiz, straight to the paid menu
+    expect(before.record.menuMode).toBe("paid");
+
+    const during = new Sim(on());
+    during.evt.freeCoffeeLimitPerDay = 5;
+    during.deps.freeCoffeesToday = async () => 4; // one left when they start
+    await during.start();
+    for (let i = 0; i < 3; i++) await during.answer(false);
+    during.deps.freeCoffeesToday = async () => 5; // taken by someone else meanwhile
+    await during.finishSurvey();
+    expect(during.record.menuMode).toBe("paid");
+    expect(during.last).toContain("Free coffees are over");
+  });
+
+  test("on: nobody gets a second free coffee", async () => {
+    const s = new Sim(on());
+    s.record.freeCoffeesTaken = 1;
+    await s.failQuiz();
+    expect(s.record.menuMode).toBe("paid");
+    expect(s.last).toContain("already had your free coffee");
+  });
+
+  test("turned on later: someone who failed earlier gets the free menu when they reply MENU", async () => {
+    const s = new Sim(event());
+    await s.failQuiz();
+    expect(s.record.menuMode).toBe("paid");
+    s.evt.freeForAllQuizTakers = true; // the admin switches it on
+    await s.say("menu");
+    expect(s.record.menuMode).toBe("free");
+  });
+
+  test("turned on later: scanning the QR code again also goes to the free menu", async () => {
+    const s = new Sim(event());
+    await s.failQuiz();
+    s.record.stage = Stages.FIRST_ORDER; // between visits
+    s.evt.freeForAllQuizTakers = true;
+    await s.scan();
+    expect(s.record.menuMode).toBe("free");
+  });
+
+  test("turned off again: a player who failed goes back to the paid menu", async () => {
+    const s = new Sim(on());
+    await s.failQuiz();
+    expect(s.record.menuMode).toBe("free");
+    s.evt.freeForAllQuizTakers = false;
+    await s.say("menu");
+    expect(s.record.menuMode).toBe("paid");
+  });
+
+  test("someone who quit the quiz halfway gets nothing extra", async () => {
+    const s = new Sim(on());
+    await s.start();
+    await s.answer(false); // one of three answered
+    expect(s.record.quizResult).toBeUndefined();
+    expect(s.record.stage).toBe(Stages.QUIZ);
+  });
+});

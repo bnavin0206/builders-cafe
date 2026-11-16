@@ -60,7 +60,7 @@ function Scan({ qrSvg }: { qrSvg: string }) {
 }
 
 /** The menu as a sign for a display: free coffees, then the paid groups in two panels. */
-export function MenuBoardView({ items, qrSvg }: { items: BoardMenuItem[]; qrSvg: string | null }) {
+export function MenuBoardView({ items, qrSvg, freeForAll = false }: { items: BoardMenuItem[]; qrSvg: string | null; freeForAll?: boolean }) {
   const layout = layoutMenu(items);
   const vars = {
     "--k-land": fitScale(layout, "landscape"),
@@ -88,7 +88,7 @@ export function MenuBoardView({ items, qrSvg }: { items: BoardMenuItem[]; qrSvg:
             {layout.free.length > 0 ? (
               <>
                 <div className="mb-crest">
-                  <div className="mb-eyebrow">For quiz winners</div>
+                  <div className="mb-eyebrow">{freeForAll ? "Free with the quiz" : "For quiz winners"}</div>
                   <h2>Free coffee</h2>
                 </div>
                 <div className="mb-sec">
@@ -101,7 +101,7 @@ export function MenuBoardView({ items, qrSvg }: { items: BoardMenuItem[]; qrSvg:
                     ))}
                   </ul>
                 </div>
-                <p className="mb-how">Get all 3 quiz answers right on WhatsApp. While free coffees last.</p>
+                <p className="mb-how">{freeForAll ? "Answer 3 quick questions on WhatsApp for a free coffee. While free coffees last." : "Get all 3 quiz answers right on WhatsApp. While free coffees last."}</p>
               </>
             ) : (
               <div className="mb-crest">
