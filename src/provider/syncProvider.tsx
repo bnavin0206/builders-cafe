@@ -3,9 +3,11 @@ import {
   useState,
   useEffect,
   useCallback,
+  useRef,
   createContext,
   useContext,
 } from "react";
+import { applyItemAdded, applyItemRemoved, applyItemUpdated } from "@/lib/cafe/list-events";
 import { getCookie } from "cookies-next";
 import { createToken } from "@/lib/twilio";
 import { Privilege } from "@/proxy";
@@ -203,11 +205,15 @@ export function useSyncList(name: string, pageSize: number) {
   const [docReady, setDocReady] = useState(false);
   const [syncResource, setResource] = useState<SyncList>();
   const [list, setInternalList] = useState<any[]>([]);
+  const stopReload = useRef<() => void>(() => {});
   const { toast } = useToast();
 
   useEffect(() => {
     setResource(undefined);
   }, [syncClient]);
+
+  // Stop the 30-second re-read when the page is left.
+  useEffect(() => () => stopReload.current(), []);
 
   useEffect(() => {
     (async () => {
@@ -218,40 +224,50 @@ export function useSyncList(name: string, pageSize: number) {
 
           let items: SyncListItem[] = [];
 
-          const pageHandler: any = async function (
-            paginator: Paginator<SyncListItem>,
-          ) {
-            items.push.apply(items, paginator.items);
-            setInternalList([...items]);
-            return paginator.hasNextPage
-              ? paginator.nextPage().then(pageHandler)
-              : null;
-          };
-
-          newList
-            .getItems({ pageSize })
-            .then(pageHandler)
-            .catch((error) => {
+          // Reads the whole list again and replaces what is shown. Used for the
+          // first load and as a safety net, so a missed live event can never
+          // leave an order stuck on an old status.
+          const reload = async () => {
+            try {
+              const fresh: SyncListItem[] = [];
+              let page: Paginator<SyncListItem> | null = await newList.getItems({ pageSize });
+              while (page) {
+                fresh.push(...page.items);
+                page = page.hasNextPage ? await page.nextPage() : null;
+              }
+              items = fresh;
+              setInternalList([...items]);
+            } catch (error) {
               console.error("List getItems() failed", error);
-            });
+            }
+          };
+          reload();
 
           newList.on("itemAdded", (args) => {
-            // console.log("add item with id ", args.item.index);
-            items.push(args.item);
+            items = applyItemAdded(items, args);
             setInternalList([...items]);
           });
           newList.on("itemRemoved", (args) => {
-            items.splice(
-              items.findIndex((item) => args.index === item.index),
-              1,
-            );
+            items = applyItemRemoved(items, args);
             setInternalList([...items]);
           });
           newList.on("itemUpdated", (args) => {
-            const index = items.findIndex((item) => args.index === item.index);
-            items[index] = args.item;
+            items = applyItemUpdated(items, args);
             setInternalList([...items]);
           });
+
+          // Safety net: re-read every 30 seconds, and when the tab comes back to the front.
+          const timer = setInterval(() => {
+            if (document.visibilityState === "visible") reload();
+          }, 30_000);
+          const onVisible = () => {
+            if (document.visibilityState === "visible") reload();
+          };
+          document.addEventListener("visibilitychange", onVisible);
+          stopReload.current = () => {
+            clearInterval(timer);
+            document.removeEventListener("visibilitychange", onVisible);
+          };
 
           setDocReady(true);
         } catch (e: any) {
