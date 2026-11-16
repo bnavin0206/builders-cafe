@@ -280,18 +280,22 @@ export async function POST(request: Request) {
     return new Response(null, { status: 200 });
   }
 
-  const { data: attendeeRecord } = await createSyncMapItemIfNotExists(
+  const attendeeItem = await createSyncMapItemIfNotExists(
     NEXT_PUBLIC_ATTENDEES_MAP,
     phone,
   );
+  const { data: attendeeRecord } = attendeeItem;
+  // The revision of this copy lets later saves be a single call (see record-saver.ts).
+  let recordRevision: string | undefined = attendeeItem.revision ? String(attendeeItem.revision) : undefined;
 
   // Pin the exact sender this message arrived on so replies (here and from
   // other flows like broadcasts) go out from the same sender, never a
   // different one auto-selected by the Messaging Service.
   const from = receivedOn || ((attendeeRecord as any).from as string | undefined) || "";
   if (receivedOn && receivedOn !== (attendeeRecord as any).from) {
-    await updateOrCreateSyncMapItem(NEXT_PUBLIC_ATTENDEES_MAP, phone, { from: receivedOn }, EventLengthInSeconds);
+    const pinned = await updateOrCreateSyncMapItem(NEXT_PUBLIC_ATTENDEES_MAP, phone, { from: receivedOn }, EventLengthInSeconds);
     (attendeeRecord as any).from = receivedOn;
+    recordRevision = pinned?.revision ? String(pinned.revision) : undefined;
   }
 
   // New customer — no event assigned yet
@@ -411,7 +415,12 @@ export async function POST(request: Request) {
       phone,
       record: attendeeRecord as AttendeeRecord,
     },
-    realDeps(event, sender, from),
+    realDeps(
+      event,
+      sender,
+      from,
+      recordRevision ? { data: attendeeRecord as Record<string, unknown>, revision: recordRevision } : undefined,
+    ),
   );
 
   return new Response(emptyTwiml(), { status: 200, headers: { "Content-Type": "text/xml" } });

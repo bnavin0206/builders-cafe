@@ -87,7 +87,7 @@ export async function fetchOrder(event: string, index: number) {
   }
 }
 
-export async function getEvent(event: string) {
+async function loadEvent(event: string) {
   const syncItems = await findSyncMapItems(NEXT_PUBLIC_EVENTS_MAP, {
     slug: event,
   });
@@ -103,4 +103,24 @@ export async function getEvent(event: string) {
   } else {
     return null;
   }
+}
+
+// Every customer message looks the event up. It changes rarely (an admin
+// switching an item or the free-coffee offer), so it is kept for a few seconds
+// instead of being read from Twilio each time. A change shows up within this time.
+export const EVENT_CACHE_MS = 10_000;
+const eventCache = new Map<string, { at: number; value: Awaited<ReturnType<typeof loadEvent>> }>();
+
+export async function getEvent(event: string) {
+  const hit = eventCache.get(event);
+  if (hit && Date.now() - hit.at < EVENT_CACHE_MS) return hit.value;
+  const value = await loadEvent(event);
+  eventCache.set(event, { at: Date.now(), value });
+  return value;
+}
+
+/** For tests and for code that has just changed the event itself. */
+export function forgetEvent(event?: string) {
+  if (event) eventCache.delete(event);
+  else eventCache.clear();
 }

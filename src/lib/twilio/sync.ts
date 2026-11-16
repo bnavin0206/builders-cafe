@@ -9,12 +9,22 @@ const {
 
 const OneWeekInSeconds = 7 * 24 * 60 * 60;
 
+// The service is looked up once and kept: fetching it again before every single
+// Sync call added a full round trip (Azure in India to Twilio in the US) to each
+// of the ten or so calls behind one customer reply.
+let servicePromise: ReturnType<ReturnType<typeof twilioClient.sync.v1.services>["fetch"]> | undefined;
+
 export async function getSyncService() {
   if (!TWILIO_SYNC_SERVICE_SID) {
     throw new Error("Missing sid for for sync service");
   }
-  const syncClient = twilioClient.sync.v1.services(TWILIO_SYNC_SERVICE_SID);
-  return syncClient.fetch();
+  if (!servicePromise) {
+    servicePromise = twilioClient.sync.v1.services(TWILIO_SYNC_SERVICE_SID).fetch();
+    servicePromise.catch(() => {
+      servicePromise = undefined; // try again next time instead of keeping a failure
+    });
+  }
+  return servicePromise;
 }
 
 export async function createSyncMapItemIfNotExists(
