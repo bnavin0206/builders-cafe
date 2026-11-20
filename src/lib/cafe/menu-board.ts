@@ -31,11 +31,19 @@ const NAMES: Record<string, { name: string; short: string }> = {
   sandwich: { name: "Sandwiches", short: "Sandwiches" },
   savoury: { name: "Savoury", short: "Savoury" },
   pastry: { name: "Pastries", short: "Pastries" },
+  snacks: { name: "Snacks", short: "Snacks" },
 };
 
-// The WhatsApp list splits the drinks into two pages (it holds only 10 rows),
-// but the boards show them as one "Drinks" group.
-const BOARD_GROUP: Record<string, string> = { coffee: "Drinks", "tea & more": "Drinks" };
+// The WhatsApp list splits the menu into pages (it holds only 10 rows),
+// but the boards show just two lists: Drinks, and Snacks (the Sandwich, Savoury
+// and Pastry groups together).
+const BOARD_GROUP: Record<string, string> = {
+  coffee: "Drinks",
+  "tea & more": "Drinks",
+  sandwich: "Snacks",
+  savoury: "Snacks",
+  pastry: "Snacks",
+};
 
 const clean = (t: string | undefined) => (t ?? "").replace(/\s+/g, " ").trim();
 

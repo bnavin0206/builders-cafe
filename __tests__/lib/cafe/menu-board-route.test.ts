@@ -55,7 +55,7 @@ describe("menu board feed", () => {
     expect(await res.json()).toEqual({
       items: [
         { title: "Latte", price: 80, group: "Hot", veg: true },
-        { title: "Chicken Puff", price: 100, group: "Savoury", veg: false },
+        { title: "Chicken Puff", price: 100, group: "Snacks", veg: false },
       ],
       freeForAll: false,
     });

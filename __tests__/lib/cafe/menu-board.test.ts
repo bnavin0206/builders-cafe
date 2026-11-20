@@ -46,10 +46,14 @@ describe("layout", () => {
     const l = layoutMenu(menuForBoard(menus.barista.items));
     expect(l.free.map((i) => i.title)).toEqual(["Cappuccino", "Americano", "Elachi Chai", "Espresso"]);
     const names = l.columns.flat().map((g) => g.name);
-    expect(names).toEqual(["Drinks", "Sandwiches", "Savoury", "Pastries"]);
-    // Veg first, then non-veg, in every section.
-    const savoury = l.columns.flat().find((g) => g.name === "Savoury")!;
-    expect(savoury.items.map((i) => i.title)).toEqual(["Veg Puff", "Veg Spring Roll", "Veg Cutlet", "Chicken Cutlet", "Chicken Puff", "Egg Puff"]);
+    // The food is one "Snacks" list: no Sandwiches, Savoury or Pastries headings.
+    expect(names).toEqual(["Drinks", "Snacks"]);
+    // Veg first, then non-veg, in each list.
+    const snacks = l.columns.flat().find((g) => g.name === "Snacks")!;
+    expect(snacks.items.map((i) => i.title)).toEqual([
+      "Mint Sandwich", "Cheese Sandwich", "Potato Sandwich", "Veg Puff", "Veg Spring Roll", "Veg Cutlet", "Cookies", "Danish", "Apple Pie",
+      "Chicken Sandwich", "Chicken Cutlet", "Chicken Puff", "Egg Puff",
+    ]);
   });
 
   test("the two columns are balanced and never reorder groups", () => {
@@ -97,12 +101,12 @@ describe("layout", () => {
 
   test("a panel title joins its groups, and says '& more' when there are too many for the arch", () => {
     const l = layoutMenu(menuForBoard(menus.barista.items));
-    expect(panelTitle(l.columns[0])).toBe("Drinks & Sandwiches");
-    expect(panelTitle(l.columns[1])).toBe("Savoury & Pastries");
-    const three = layoutMenu(menuForBoard([it("A", 80, "Hot"), it("B", 80, "Cold"), it("C", 100, "Sandwich"), it("D", 100, "Pastry"), it("E", 100, "Savoury"), it("F", 100, "Savoury")]));
+    expect(panelTitle(l.columns[0])).toBe("Drinks");
+    expect(panelTitle(l.columns[1])).toBe("Snacks");
+    const three = layoutMenu(menuForBoard([it("A", 80, "Hot"), it("B", 80, "Cold"), it("C", 100, "Sandwich"), it("D", 100, "Brunch"), it("E", 100, "Salads"), it("F", 100, "Salads")]));
     expect(panelTitle(three.columns.flat())).toBe("Hot & more");
     const small = layoutMenu(menuForBoard([it("A", 80, "Hot"), it("B", 100, "Savoury")]));
-    expect(panelTitle([...small.columns[0], ...small.columns[1]])).toBe("Hot & Savoury");
+    expect(panelTitle([...small.columns[0], ...small.columns[1]])).toBe("Hot & Snacks");
   });
 });
 
