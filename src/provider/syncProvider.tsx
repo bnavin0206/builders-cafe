@@ -10,6 +10,7 @@ import {
 import { applyItemAdded, applyItemRemoved, applyItemUpdated } from "@/lib/cafe/list-events";
 import { getCookie } from "cookies-next";
 import { createToken } from "@/lib/twilio";
+import { tokenIdentity } from "@/lib/twilio/token-identity";
 import { Privilege } from "@/proxy";
 import {
   Client,
@@ -42,6 +43,13 @@ export default function SyncProvider({
     async function initClient() {
       if (!syncClient) {
         const token = await createToken();
+        // The page can load from an old cookie after the browser has forgotten the
+        // login. The token is then made for "unknown" and Twilio refuses everything
+        // ("Access forbidden for identity"). Go to the login page to sign in again.
+        if (tokenIdentity(token) === Privilege.UNKNOWN) {
+          window.location.assign("/login");
+          return;
+        }
         const client = new Client(token);
         client
           .on("tokenAboutToExpire", async () => {
